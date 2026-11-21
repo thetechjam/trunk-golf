@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  searchCourses,
-  fetchCourse,
-  CourseTimeoutError,
-  type CourseHit,
-  type FetchedCourse,
-} from '../courses/openGolfApi';
+import { CourseTimeoutError, type CourseHit, type FetchedCourse } from '../courses/openGolfApi';
+import { findCourses, loadCourse } from '../courses/findCourses';
 
 interface Props {
   /** The course name (owned by the parent screen). */
@@ -23,10 +18,13 @@ interface Props {
  * debounced search against OpenGolfAPI. Typing 3+ characters shows matching
  * courses; picking one fetches the full scorecard and hands it to the parent
  * (which also sets the name). Ignoring the results — or getting no matches —
- * simply leaves the typed text as a manually entered course name.
+ * simply leaves the typed text as a manually entered course name. When the
+ * service does not answer, the matches come from the offline course list
+ * (src/courses/findCourses.ts) and the status line says so.
  */
 export function CourseSearch({ value, onChange, onPick, label = 'Course (optional)', placeholder = 'e.g. Pebble Beach' }: Props) {
   const [hits, setHits] = useState<CourseHit[]>([]);
+  const [offline, setOffline] = useState(false);
   const [open, setOpen] = useState(false);
   const [searching, setSearching] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -55,9 +53,10 @@ export function CourseSearch({ value, onChange, onPick, label = 'Course (optiona
     setSearching(true);
     setError('');
     const t = setTimeout(() => {
-      searchCourses(term, ctrl.signal)
+      findCourses(term, ctrl.signal)
         .then((results) => {
-          setHits(results.slice(0, 8));
+          setHits(results.hits.slice(0, 8));
+          setOffline(results.offline);
           setOpen(true);
         })
         .catch((err: unknown) => {
@@ -86,7 +85,7 @@ export function CourseSearch({ value, onChange, onPick, label = 'Course (optiona
   const pick = (hit: CourseHit) => {
     setLoadingId(hit.id);
     setError('');
-    fetchCourse(hit.id)
+    loadCourse(hit)
       .then((course) => {
         typed.current = null;
         if (!course.holes.length) {
@@ -137,20 +136,25 @@ export function CourseSearch({ value, onChange, onPick, label = 'Course (optiona
         typing to use your own course name.
       </p>
 
-      {/* One always-mounted live region rather than three conditional lines:
+      {/* One always-mounted live region rather than four conditional lines:
           inserting an element that already has text in it is missed by many
           screen readers, so the node has to be there before the text changes.
-          The three states it carries are mutually exclusive anyway — the
-          no-matches line only exists when there is no result list to sit
-          under — so merging them costs nothing visually. */}
+          The states it carries are mutually exclusive anyway — the no-matches
+          line only exists when there is no result list to sit under, and the
+          offline line only when there is one — so merging them costs nothing
+          visually. */}
       <p className={`cs-status${error ? ' cs-error' : ''}`} role="status">
         {searching
           ? 'Searching…'
           : error
             ? error
             : open && hits.length === 0 && value.trim().length >= 3
-              ? 'No matches — your typed name will be used as-is.'
-              : ''}
+              ? offline
+                ? 'Course search is not answering and the offline course list has no match — your typed name will be used as-is.'
+                : 'No matches — your typed name will be used as-is.'
+              : open && offline
+                ? 'From the offline course list — live search came up empty or did not answer. Most of these cards are missing holes, so check the pars.'
+                : ''}
       </p>
 
       {open && hits.length > 0 && (
@@ -171,11 +175,11 @@ export function CourseSearch({ value, onChange, onPick, label = 'Course (optiona
       )}
 
       <p className="cs-attribution">
-        Course data ©{' '}
+        Contains data from OpenGolfAPI (opengolfapi.org), ©{' '}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
           OpenStreetMap
         </a>{' '}
-        contributors (ODbL 1.0) via OpenGolfAPI
+        contributors, ODbL 1.0
       </p>
     </div>
   );

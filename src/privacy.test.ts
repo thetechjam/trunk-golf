@@ -18,6 +18,10 @@ const CLAIMS = [
   'no accounts, no analytics',
   'local storage',
   'api.opengolfapi.org',
+  // The fallback: where it comes from and that searching it sends nothing.
+  'offline course list',
+  'searched on your device',
+  'Contains data from OpenGolfAPI (opengolfapi.org)',
   'Netlify Forms',
   'Include this round',
   'compressed, not encrypted',

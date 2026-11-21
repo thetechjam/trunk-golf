@@ -119,3 +119,38 @@ export function scorecardIssues(used: Hole[], expected?: number, raw?: Hole[]): 
 
   return issues;
 }
+
+/**
+ * What to say about a card from the offline course list, whose holes are
+ * often partly made up.
+ *
+ * `estimated` are the hole numbers the list had no entry for (filled at par 4
+ * — see `courseFromRow`); only those on the holes being played are named. The
+ * listed total is the one check the list carries on itself, so when the whole
+ * card is being played and it does not add up to it, that is said too.
+ * `cardHoles` is the length of the card the total describes.
+ */
+export function estimatedHoleIssues(
+  used: Hole[],
+  estimated: number[],
+  listedPar?: number,
+  cardHoles?: number
+): string[] {
+  const issues: string[] = [];
+  const guessed = used.filter((h) => estimated.includes(h.number)).map((h) => h.number);
+  if (guessed.length > 0) {
+    const one = guessed.length === 1;
+    issues.push(
+      `${one ? 'Hole' : 'Holes'} ${list(guessed)} ${one ? 'is' : 'are'} missing from the offline course list, so ${
+        one ? 'it is' : 'they are'
+      } set to par 4.`
+    );
+  }
+  if (listedPar && used.length > 0 && used.length === cardHoles) {
+    const total = used.reduce((sum, h) => sum + h.par, 0);
+    if (total !== listedPar) {
+      issues.push(`The card adds up to par ${total}; the course is listed as par ${listedPar}.`);
+    }
+  }
+  return issues;
+}

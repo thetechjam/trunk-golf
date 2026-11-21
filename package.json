@@ -18,7 +18,8 @@
     "audit:contrast": "node scripts/contrast-audit.mjs",
     "capture:video": "node scripts/capture-tutorial.mjs",
     "og:image": "node scripts/og-image.mjs",
-    "screenshots:capture": "node scripts/capture-screenshots.mjs"
+    "screenshots:capture": "node scripts/capture-screenshots.mjs",
+    "courses:snapshot": "node scripts/course-snapshot.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",

@@ -79,6 +79,24 @@ export default defineConfig({
         // A build artifact for Netlify's form scanner, and the link-unfurl card,
         // which only crawlers fetch: neither is an app asset.
         globIgnores: ['**/__forms.html', '**/og.png'],
+        // The offline course list (public/courses/, ~1 MB raw, ~280 KB
+        // gzipped) is deliberately not in the precache above — `json` is not
+        // in globPatterns — so installing or updating the app never downloads
+        // it. It is fetched only when live course search fails or comes back
+        // empty (src/courses/findCourses.ts), and this keeps the copy that
+        // fetch got: the next search with no signal at all still has it, and
+        // a newer list replaces it in the background when there is one.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin }) =>
+              sameOrigin && url.pathname.startsWith('/courses/'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'trunk-course-list',
+              expiration: { maxEntries: 2 },
+            },
+          },
+        ],
       },
       includeAssets: ['app-icon.svg', 'favicon.svg', 'apple-touch-icon.png'],
       manifest: {

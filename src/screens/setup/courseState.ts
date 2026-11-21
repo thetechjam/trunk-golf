@@ -1,6 +1,6 @@
 import type { Hole, SavedCourse } from '../../types';
 import { sliceCourseHoles, type FetchedCourse } from '../../courses/openGolfApi';
-import { scorecardIssues } from '../../courses/validate';
+import { scorecardIssues, estimatedHoleIssues } from '../../courses/validate';
 import { strokeIndexProblem, type StrokeIndexProblem } from '../../games/strokeIndex';
 import { validSlope, validRating, courseHandicap } from '../../games/courseHandicap';
 
@@ -58,8 +58,12 @@ export interface CourseState {
    * index check needs it. `expected` is the hole count that was asked for,
    * which the hole count itself no longer tells us: a short import sets the
    * round to the number of holes that arrived.
+   *
+   * `estimated` and `listedPar` come only with a card from the offline course
+   * list: the holes it had to fill in, and the total par it lists. A hole
+   * leaves `estimated` once its par is set by hand.
    */
-  imported: { raw: Hole[]; expected: number } | null;
+  imported: { raw: Hole[]; expected: number; estimated?: number[]; listedPar?: number } | null;
   /**
    * The whole card a course was loaded from, saved or searched. Switching to
    * nine used to keep holes 1–9 with their eighteen-hole stroke indexes —
@@ -174,7 +178,12 @@ export function courseReducer(state: CourseState, action: CourseAction): CourseS
         nine: 'front',
         advancedHoles: applied.some((h) => h.strokeIndex),
         holesSource: 'search',
-        imported: { raw: c.holes, expected: count },
+        imported: {
+          raw: c.holes,
+          expected: count,
+          ...(c.estimated?.length ? { estimated: c.estimated } : {}),
+          ...(c.listedPar ? { listedPar: c.listedPar } : {}),
+        },
         // Search data carries no slope or rating, and the ones on screen were
         // the last course's: left in place they converted every Index with the
         // wrong course's figures and went onto the round as that course's.
@@ -183,8 +192,10 @@ export function courseReducer(state: CourseState, action: CourseAction): CourseS
         ratingHoles: undefined,
         savedNote: {
           text: applied.some((h) => h.strokeIndex)
-            ? `Loaded "${c.name}" — par + stroke index`
-            : `Loaded "${c.name}" — par only (no stroke index in database)`,
+            ? `Loaded "${c.name}"${c.offline ? ' from the offline list' : ''} — par + stroke index`
+            : c.offline
+              ? `Loaded "${c.name}" from the offline list — par only`
+              : `Loaded "${c.name}" — par only (no stroke index in database)`,
           row: 'course',
         },
       };
@@ -246,6 +257,13 @@ export function courseReducer(state: CourseState, action: CourseAction): CourseS
         // A single hand-edited par is still enough to make the loaded/saved note
         // describe a course the holes no longer match.
         savedNote: null,
+        // A par set by hand is no longer the list's guess.
+        imported: state.imported?.estimated
+          ? {
+              ...state.imported,
+              estimated: state.imported.estimated.filter((n) => n !== action.number),
+            }
+          : state.imported,
       };
 
     case 'strokeIndex':
@@ -421,7 +439,15 @@ export function deriveCourse(s: CourseState): DerivedCourse {
   };
   const importIssues =
     s.holesSource === 'search' && s.imported
-      ? scorecardIssues(s.holes, s.imported.expected, s.imported.raw)
+      ? [
+          ...estimatedHoleIssues(
+            s.holes,
+            s.imported.estimated ?? [],
+            s.imported.listedPar,
+            s.imported.raw.length
+          ),
+          ...scorecardIssues(s.holes, s.imported.expected, s.imported.raw),
+        ]
       : [];
   return { ratedHoles, rated, derivedHandicap, importIssues, siProblem: strokeIndexProblem(s.holes) };
 }
