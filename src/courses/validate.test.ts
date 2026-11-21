@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scorecardIssues } from './validate';
+import { scorecardIssues, estimatedHoleIssues } from './validate';
 import { nextPar } from './parOptions';
 import type { Hole } from '../types';
 
@@ -196,5 +196,30 @@ describe('nextPar', () => {
     expect(nextPar(7)).toBe(3);
     expect(nextPar(0)).toBe(3);
     expect(nextPar(72)).toBe(3);
+  });
+});
+
+describe('estimatedHoleIssues', () => {
+  const card = (pars: number[]): Hole[] => pars.map((par, i) => ({ number: i + 1, par }));
+  // Par 72 with two par 5s missing from the list and set to 4: adds up to 70.
+  const pars = [4, 4, 4, 3, 5, 4, 4, 3, 5, 4, 4, 3, 5, 4, 3, 3, 4, 4];
+
+  it('names the holes that were set to par 4 and checks the total', () => {
+    expect(estimatedHoleIssues(card(pars), [17, 18], 72, 18)).toEqual([
+      'Holes 17 and 18 are missing from the offline course list, so they are set to par 4.',
+      'The card adds up to par 70; the course is listed as par 72.',
+    ]);
+  });
+
+  it('names only the holes being played, and skips the total on a nine', () => {
+    const front = card(pars).slice(0, 9);
+    expect(estimatedHoleIssues(front, [2, 17], 72, 18)).toEqual([
+      'Hole 2 is missing from the offline course list, so it is set to par 4.',
+    ]);
+  });
+
+  it('says nothing about a whole card that adds up', () => {
+    expect(estimatedHoleIssues(card(pars), [], 70, 18)).toEqual([]);
+    expect(estimatedHoleIssues(card(pars), [], undefined, 18)).toEqual([]);
   });
 });

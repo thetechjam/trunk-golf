@@ -181,10 +181,16 @@ export function LeagueSetup({ onCancel, onStart, onStandings }: Props) {
     setHoles(applied);
     setError('');
     const label = nine === 'back' ? 'back 9' : 'front 9';
+    // The offline course list fills holes it has no entry for at par 4; name
+    // the ones tonight is played on so they get checked against the card.
+    const guessed = applied.filter((h) => c.estimated?.includes(h.number)).map((h) => h.number);
+    const check = guessed.length
+      ? ` (${guessed.length === 1 ? 'hole' : 'holes'} ${guessed.join(', ')} not in the offline list, set to par 4 — check the card)`
+      : '';
     setSavedNote(
-      applied.some((h) => typeof h.strokeIndex === 'number')
+      (applied.some((h) => typeof h.strokeIndex === 'number')
         ? `Loaded ${label} of "${c.name}" — par + stroke index`
-        : `Loaded ${label} of "${c.name}" — par only`
+        : `Loaded ${label} of "${c.name}" — par only`) + check
     );
   };
 

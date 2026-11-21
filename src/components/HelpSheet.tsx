@@ -116,12 +116,21 @@ export function HelpSheet({ onBack }: Props) {
       <section className="help-section">
         <h3>Course data</h3>
         <p>
-          Course search is powered by OpenGolfAPI. Course data ©{' '}
+          Course search is powered by OpenGolfAPI. Contains data from OpenGolfAPI
+          (opengolfapi.org), ©{' '}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
             OpenStreetMap
           </a>{' '}
-          contributors (ODbL 1.0) via OpenGolfAPI. Check a card before you play
-          off it — open data is sometimes a par out — and save the checked one.
+          contributors, ODbL 1.0. Check a card before you play off it — open
+          data is sometimes a par out — and save the checked one.
+        </p>
+        <p>
+          When the service does not answer, search uses an offline course list
+          that ships with Trunk instead, and says so. It is the same open data,
+          searched on your phone, and most of its scorecards are missing a few
+          holes: those are set to par 4 and named on New Round so you can fix
+          them from the card. The list is published under the same licence at
+          trunk.golf/courses/opengolfapi-us.json.
         </p>
       </section>
     </div>

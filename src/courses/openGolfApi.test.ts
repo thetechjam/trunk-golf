@@ -3,6 +3,7 @@ import {
   searchCourses,
   fetchCourse,
   COURSE_REQUEST_TIMEOUT_MS,
+  SEARCH_TIMEOUT_MS,
   CourseTimeoutError,
 } from './openGolfApi';
 
@@ -42,12 +43,17 @@ describe('OpenGolfAPI requests', () => {
     await expect(failed).rejects.not.toBeInstanceOf(CourseTimeoutError);
   });
 
-  it('stops waiting after 8 seconds and says so', async () => {
+  it('stops waiting for a search after 4 seconds and says so', async () => {
     vi.useFakeTimers();
     vi.stubGlobal('fetch', hang);
     const pending = searchCourses('pebble');
     const asserted = expect(pending).rejects.toThrow(/^Course search is taking too long/);
-    await vi.advanceTimersByTimeAsync(COURSE_REQUEST_TIMEOUT_MS);
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMEOUT_MS - 1);
+    let settled = false;
+    pending.catch(() => (settled = true));
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
     await expect(pending).rejects.toBeInstanceOf(CourseTimeoutError);
     await asserted;
   });
@@ -58,7 +64,12 @@ describe('OpenGolfAPI requests', () => {
     const pending = fetchCourse('course-1');
     // Its own words: this is a scorecard, not a search.
     const asserted = expect(pending).rejects.toThrow(/^Loading that course is taking too long/);
-    await vi.advanceTimersByTimeAsync(COURSE_REQUEST_TIMEOUT_MS);
+    // A scorecard keeps the longer wait: there is no offline list to hand over to.
+    let settled = false;
+    pending.catch(() => (settled = true));
+    await vi.advanceTimersByTimeAsync(SEARCH_TIMEOUT_MS);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(COURSE_REQUEST_TIMEOUT_MS - SEARCH_TIMEOUT_MS);
     await asserted;
   });
 

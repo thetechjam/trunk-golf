@@ -61,6 +61,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   says the old address is being retired. The old address still has no
   redirect and nothing saved there is moved or deleted; trunk.golf, local
   copies, deploy previews and the native shell are unchanged.
+- **Course search works when OpenGolfAPI does not.** The service has been
+  hanging and returning 522s since 19 November, and course search went with
+  it. Trunk now gives the live search four seconds and, if it fails or finds
+  nothing, searches an offline course list instead: about 15,700 US courses
+  from OpenGolfAPI's open-data dump, slimmed to name, town, state and pars
+  (about 280 KB over the wire), served from trunk.golf and searched on the
+  phone. It is downloaded only when it is needed, never with the app, and the
+  service worker keeps it after that, so it answers with no signal too. The
+  status line says when results come from the offline list. Its scorecards
+  are mostly incomplete, so a picked course arrives as a whole card with the
+  missing holes at par 4, and New Round names those holes ("Holes 3, 6 and 10
+  are missing from the offline course list…"), says when the card does not
+  add up to the course's listed par, and drops a hole from the list once its
+  par is set by hand; League says the same in its load note. Stroke indexes
+  come through only as a complete set. Typing a name of your own still works
+  either way. The list is published at `/courses/opengolfapi-us.json` under the
+  ODbL, rebuilt by `npm run courses:snapshot` from a pinned, checksum-verified
+  copy of the dump, and the course search, Help and privacy page now credit
+  "Contains data from OpenGolfAPI (opengolfapi.org)" alongside OpenStreetMap.
 - **trunkgolf.com redirects to trunk.golf.** `netlify.toml` sends
   `trunkgolf.com` and `www.trunkgolf.com`, over http or https, to the same
   path on `https://trunk.golf` with a permanent (301) redirect.

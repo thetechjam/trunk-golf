@@ -30,8 +30,14 @@ Nothing leaves your device unless you do one of these things:
 - **Course search.** When you type three or more characters into the course
   field on New Round, that text is sent to `api.opengolfapi.org` to look up
   matching courses, and picking a result fetches that course's scorecard from
-  the same service. Course data is © OpenStreetMap contributors (ODbL 1.0) via
-  OpenGolfAPI. Nothing about you or your round is sent — only what you typed.
+  the same service. Nothing about you or your round is sent — only what you
+  typed. If that service does not answer, or finds nothing, Trunk searches its
+  offline course list instead: the list is downloaded from this site (the same
+  file for everyone, with nothing you typed in the request), kept by the
+  service worker, and searched on your device, so an offline search sends
+  nothing. Contains data from OpenGolfAPI (opengolfapi.org), © OpenStreetMap
+  contributors, ODbL 1.0; the offline list is published under the same licence
+  at https://trunk.golf/courses/opengolfapi-us.json.
 - **Sending feedback.** Settings → Send feedback posts what you write — the
   report, and your name if you give one — together with a few diagnostics
   (which screen you were on, the app version and build, your browser's

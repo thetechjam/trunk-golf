@@ -1,14 +1,23 @@
 // Live course lookup via OpenGolfAPI (https://opengolfapi.org).
 // Keyless, CORS-enabled open data (ODbL), so the client can call it directly —
 // no backend, no API key. Used at setup time to pre-fill pars + stroke indexes.
-// Favorite Courses remains the offline fallback and covers anything not here.
+// When the service does not answer, search falls back to the bundled course
+// list (snapshot.ts, findCourses.ts); Favorite Courses covers anything else.
 
 import type { Hole } from '../types';
 
 const BASE = 'https://api.opengolfapi.org';
 
-/** How long a search or a scorecard fetch is allowed to sit with no answer. */
+/** How long a scorecard fetch is allowed to sit with no answer. */
 export const COURSE_REQUEST_TIMEOUT_MS = 8000;
+
+/**
+ * How long a live search gets before the offline course list answers instead.
+ * Shorter than a scorecard fetch: a search that has not answered in four
+ * seconds is a service in trouble (it spent late November 2026 hanging and
+ * returning 522s), and the offline list can answer the same question at once.
+ */
+export const SEARCH_TIMEOUT_MS = 4000;
 
 /**
  * A lookup that failed. The message carries the HTTP status for logs and bug
@@ -39,11 +48,14 @@ const COURSE_TIMEOUT_MESSAGE =
   'Loading that course is taking too long. Check your connection and try again.';
 
 /**
- * Abort the request after {@link COURSE_REQUEST_TIMEOUT_MS}, and also when
- * the caller does. The caller's abort is theirs — typing on past a search —
- * and must not be reported as a timeout.
+ * Abort the request after `ms`, and also when the caller does. The caller's
+ * abort is theirs — typing on past a search — and must not be reported as a
+ * timeout.
  */
-function withTimeout(parent?: AbortSignal): {
+export function withTimeout(
+  parent: AbortSignal | undefined,
+  ms: number
+): {
   signal: AbortSignal;
   done: () => void;
   timedOut: () => boolean;
@@ -53,7 +65,7 @@ function withTimeout(parent?: AbortSignal): {
   const timer = setTimeout(() => {
     timed = true;
     ctrl.abort();
-  }, COURSE_REQUEST_TIMEOUT_MS);
+  }, ms);
   const onParent = () => ctrl.abort();
   if (parent) {
     if (parent.aborted) ctrl.abort();
@@ -73,9 +85,10 @@ async function fetchJson(
   url: string,
   signal: AbortSignal | undefined,
   failure: string,
-  timeoutMessage: string
+  timeoutMessage: string,
+  timeoutMs: number
 ): Promise<unknown> {
-  const timed = withTimeout(signal);
+  const timed = withTimeout(signal, timeoutMs);
   try {
     const res = await fetch(url, { signal: timed.signal });
     if (!res.ok) throw new CourseRequestError(`${failure} (${res.status})`);
@@ -101,6 +114,8 @@ export interface CourseHit {
   city: string | null;
   state: string | null;
   par: number | null;
+  /** From the offline course list rather than the live service. */
+  offline?: boolean;
 }
 
 export interface FetchedCourse {
@@ -110,6 +125,16 @@ export interface FetchedCourse {
   holes: Hole[];
   /** True only when every hole has a stroke index — required for net handicap allocation. */
   hasStrokeIndex: boolean;
+  /** From the offline course list rather than the live service. */
+  offline?: boolean;
+  /**
+   * Holes the source had no entry for, filled in at par 4 so the card is whole.
+   * The offline list is missing some holes on almost every course; the screen
+   * names these so they get checked against the real card.
+   */
+  estimated?: number[];
+  /** The course's total par as the source lists it, to check the card against. */
+  listedPar?: number;
 }
 
 /** Search courses by name. Returns lightweight hits (no scorecard yet). */
@@ -118,7 +143,8 @@ export async function searchCourses(q: string, signal?: AbortSignal): Promise<Co
     `${BASE}/v1/courses/search?q=${encodeURIComponent(q)}`,
     signal,
     'Search failed',
-    SEARCH_TIMEOUT_MESSAGE
+    SEARCH_TIMEOUT_MESSAGE,
+    SEARCH_TIMEOUT_MS
   )) as { courses?: Record<string, unknown>[] };
   return (data.courses ?? []).map(
     (c: Record<string, unknown>): CourseHit => ({
@@ -143,7 +169,8 @@ export async function fetchCourse(id: string, signal?: AbortSignal): Promise<Fet
     `${BASE}/api/v1/courses/${encodeURIComponent(id)}`,
     signal,
     'Course lookup failed',
-    COURSE_TIMEOUT_MESSAGE
+    COURSE_TIMEOUT_MESSAGE,
+    COURSE_REQUEST_TIMEOUT_MS
   )) as {
     holes_data?: HoleRow[];
     scorecard?: { hole: number; par: number }[];
