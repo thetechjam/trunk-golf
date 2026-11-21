@@ -11,16 +11,20 @@ import type { ModelChoice, ReadResult, ScanFailure } from './readCard';
  * first, and the body is never read when the feature is switched off.
  */
 
-/** Every timing in the scan path, in one place. See the README for how they were chosen. */
+/**
+ * Every timing in the scan path, in one place.
+ *
+ * Netlify documents a 60 s limit for synchronous functions, but measured on
+ * this site's deploy preview (November 2026) a request that sent nothing back
+ * for 30 s was cut off by the edge with an HTML "Inactivity Timeout" 504: a
+ * 28 s response arrived, a 40 s one did not. So the handler budgets 26 s in
+ * all — Haiku gets 10 s, and Sonnet's 14 s retry is only started when it can
+ * still finish inside the budget. The client waits 35 s (src/courses/scanCard.ts).
+ */
 export const TIMING = {
-  /**
-   * What the handler allows itself in total. Netlify's synchronous function
-   * limit is 60 s; this leaves room for reading the body, cold start and
-   * writing the response, so the function answers before the platform does.
-   */
-  budgetMs: 50_000,
-  haikuTimeoutMs: 20_000,
-  sonnetTimeoutMs: 25_000,
+  budgetMs: 26_000,
+  haikuTimeoutMs: 10_000,
+  sonnetTimeoutMs: 14_000,
 } as const;
 
 /** Largest JPEG accepted. The browser sends ~1568 px at q0.85, well under 1.5 MB. */

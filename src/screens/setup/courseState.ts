@@ -18,7 +18,12 @@ import { validSlope, validRating, courseHandicap } from '../../games/courseHandi
  * from — are kept in the one place that changes them.
  */
 
-export type HolesSource = 'manual' | 'search' | 'saved';
+/**
+ * 'scan' is a card read from a photo of the printed scorecard
+ * (src/components/ScanCard.tsx). Like 'search', it lives only on this screen:
+ * nothing about where the holes came from is saved with a course or a round.
+ */
+export type HolesSource = 'manual' | 'search' | 'saved' | 'scan';
 export type Nine = 'front' | 'back';
 export type NoteRow = 'course' | 'holes' | 'check';
 
@@ -43,10 +48,11 @@ export interface CourseState {
   /**
    * Where the pars and stroke indexes currently on screen came from.
    *
-   * Only 'search' earns a warning. Course search is open community data and is
-   * sometimes wrong — a par off by one quietly changes every net score and
-   * every Stableford point for the whole round. A course the user saved
-   * themselves, or a preset they chose, needs no such caveat.
+   * Only 'search' and 'scan' earn a warning. Course search is open community
+   * data and is sometimes wrong, and a scan is a model's reading of a photo,
+   * which can misread a number — a par off by one quietly changes every net
+   * score and every Stableford point for the whole round. A course the user
+   * saved themselves, or a preset they chose, needs no such caveat.
    */
   holesSource: HolesSource;
   /**
@@ -88,6 +94,8 @@ export type CourseAction =
   | { type: 'course'; name: string }
   | { type: 'loadSaved'; course: SavedCourse }
   | { type: 'loadSearch'; course: FetchedCourse }
+  /** A card read from a photo and confirmed in the scan sheet. */
+  | { type: 'loadScan'; course: FetchedCourse }
   | { type: 'holeCount'; count: number }
   | { type: 'nine'; nine: Nine }
   | { type: 'preset'; kind: 'par4' | 'standard' }
@@ -128,6 +136,41 @@ export const initialCourseState: CourseState = {
   savedNote: null,
 };
 
+/**
+ * A fetched card onto the screen: what course search and a scan have in
+ * common. The hole count follows what is on screen when the card can supply
+ * it (a nine-hole round takes the front nine of an eighteen); a card of nine
+ * sets up a nine. A back nine — a scan of holes 10–18 only — keeps its
+ * numbering, and is the card's `source` only when there are eighteen to cut.
+ */
+function loadFetched(state: CourseState, c: FetchedCourse, from: 'search' | 'scan'): CourseState {
+  const count = state.holeCount <= 9 ? Math.min(9, c.holes.length) : Math.min(18, c.holes.length);
+  const back = from === 'scan' && c.holes.length > 0 && c.holes[0].number === 10;
+  const applied = sliceCourseHoles(c.holes, count, back ? { nine: 'back' } : {});
+  return {
+    ...state,
+    course: c.name,
+    holeCount: count,
+    holes: applied,
+    source: c.holes.length >= 18 ? sliceCourseHoles(c.holes, 18) : null,
+    nine: back ? 'back' : 'front',
+    advancedHoles: applied.some((h) => h.strokeIndex),
+    holesSource: from,
+    imported: {
+      raw: c.holes,
+      expected: count,
+      ...(c.estimated?.length ? { estimated: c.estimated } : {}),
+      ...(c.listedPar ? { listedPar: c.listedPar } : {}),
+    },
+    // Neither carries a slope or rating, and the ones on screen were the last
+    // course's: left in place they converted every Index with the wrong
+    // course's figures and went onto the round as that course's.
+    slope: undefined,
+    rating: undefined,
+    ratingHoles: undefined,
+  };
+}
+
 export function courseReducer(state: CourseState, action: CourseAction): CourseState {
   switch (action.type) {
     case 'course':
@@ -166,36 +209,30 @@ export function courseReducer(state: CourseState, action: CourseAction): CourseS
 
     case 'loadSearch': {
       const c = action.course;
-      const count =
-        state.holeCount <= 9 ? Math.min(9, c.holes.length) : Math.min(18, c.holes.length);
-      const applied = sliceCourseHoles(c.holes, count);
+      const next = loadFetched(state, c, 'search');
       return {
-        ...state,
-        course: c.name,
-        holeCount: count,
-        holes: applied,
-        source: c.holes.length >= 18 ? sliceCourseHoles(c.holes, 18) : null,
-        nine: 'front',
-        advancedHoles: applied.some((h) => h.strokeIndex),
-        holesSource: 'search',
-        imported: {
-          raw: c.holes,
-          expected: count,
-          ...(c.estimated?.length ? { estimated: c.estimated } : {}),
-          ...(c.listedPar ? { listedPar: c.listedPar } : {}),
-        },
-        // Search data carries no slope or rating, and the ones on screen were
-        // the last course's: left in place they converted every Index with the
-        // wrong course's figures and went onto the round as that course's.
-        slope: undefined,
-        rating: undefined,
-        ratingHoles: undefined,
+        ...next,
         savedNote: {
-          text: applied.some((h) => h.strokeIndex)
+          text: next.holes.some((h) => h.strokeIndex)
             ? `Loaded "${c.name}"${c.offline ? ' from the offline list' : ''} — par + stroke index`
             : c.offline
               ? `Loaded "${c.name}" from the offline list — par only`
               : `Loaded "${c.name}" — par only (no stroke index in database)`,
+          row: 'course',
+        },
+      };
+    }
+
+    case 'loadScan': {
+      const c = action.course;
+      const next = loadFetched(state, c, 'scan');
+      const named = c.name ? `"${c.name}" ` : '';
+      return {
+        ...next,
+        savedNote: {
+          text: next.holes.some((h) => h.strokeIndex)
+            ? `Loaded ${named}from your photo — par + stroke index`
+            : `Loaded ${named}from your photo — par only`,
           row: 'course',
         },
       };
@@ -438,7 +475,7 @@ export function deriveCourse(s: CourseState): DerivedCourse {
     });
   };
   const importIssues =
-    s.holesSource === 'search' && s.imported
+    (s.holesSource === 'search' || s.holesSource === 'scan') && s.imported
       ? [
           ...estimatedHoleIssues(
             s.holes,

@@ -306,3 +306,33 @@ export function rowSetToCourse(rs: ScannedRowSet, name: string): FetchedCourse {
     listedPar: listed ?? undefined,
   };
 }
+
+/**
+ * The row sets in a server reply, re-checked in the browser.
+ *
+ * The server ran these through `checkScan` already, but the browser does not
+ * take that on trust: a reply can be mangled on the way, or come from an
+ * older deploy. Each is put back into the model's shape and through the same
+ * structural checks; `siDropped` is carried, since the indexes it describes
+ * are already gone.
+ */
+export function reviveRowSets(v: unknown): ScannedRowSet[] {
+  if (!Array.isArray(v)) return [];
+  const out: ScannedRowSet[] = [];
+  for (const r of v.slice(0, MAX_ROW_SETS)) {
+    if (!isObject(r) || !Array.isArray(r.holes)) continue;
+    const printed = isObject(r.printed) ? r.printed : {};
+    const rs = readRowSet({
+      label: r.label,
+      audience: r.audience,
+      tees: r.tees,
+      hole_count: r.holeCount,
+      holes: r.holes.map((h) => (isObject(h) ? { number: h.number, par: h.par, stroke_index: h.strokeIndex ?? null } : h)),
+      printed_par_out: printed.out,
+      printed_par_in: printed.in,
+      printed_par_total: printed.total,
+    });
+    if (rs) out.push({ ...rs, siDropped: rs.siDropped || r.siDropped === true });
+  }
+  return out;
+}

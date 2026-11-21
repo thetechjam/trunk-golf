@@ -9,6 +9,8 @@ interface Props {
   maxStrokeIndex: number;
   onPar: (holeNumber: number, par: number) => void;
   onStrokeIndex: (holeNumber: number, si: number | undefined) => void;
+  /** Hole numbers whose par should be marked for checking (the scan's confirm card). */
+  flaggedPars?: ReadonlySet<number>;
 }
 
 /**
@@ -22,14 +24,19 @@ interface Props {
  * bare boxes, and the default stroke indexes make it worse by repeating the
  * hole number underneath itself.
  */
-export function ParGrid({ holes, withStrokeIndex, maxStrokeIndex, onPar, onStrokeIndex }: Props) {
+export function ParGrid({ holes, withStrokeIndex, maxStrokeIndex, onPar, onStrokeIndex, flaggedPars }: Props) {
   return (
     <div className={`par-grid${withStrokeIndex ? ' with-si' : ''}`}>
       {holes.map((h) => (
         <div key={h.number} className="par-cell">
           <span className="par-hole">{h.number}</span>
           {withStrokeIndex && <span className="par-cap">Par</span>}
-          <ParTile hole={h.number} par={h.par} onChange={(v) => onPar(h.number, v)} />
+          <ParTile
+            hole={h.number}
+            par={h.par}
+            flagged={flaggedPars?.has(h.number) ?? false}
+            onChange={(v) => onPar(h.number, v)}
+          />
           {withStrokeIndex && (
             <>
               <span className="par-cap">SI</span>

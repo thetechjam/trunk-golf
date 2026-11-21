@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { sliceCourseHoles } from '../../courses/openGolfApi';
 import { realCard18 } from '../../games/testFixtures';
+import { checkScan, rowSetToCourse } from '../../courses/scanGate';
+import { rawRowSet, rawScan } from '../../courses/scanFixtures';
 import {
   courseToSave,
   mergeNineIntoCard,
@@ -106,5 +108,51 @@ describe('a course from the offline list', () => {
     );
     const front = courseReducer(loaded, { type: 'holeCount', count: 9 });
     expect(deriveCourse(front).importIssues).toEqual([]);
+  });
+});
+
+describe('a card read from a photo', () => {
+  const rated = { ...initialCourseState, slope: 131, rating: 71.8, ratingHoles: 18 };
+
+  it('loads as a scan, clears the last course’s slope and rating, and keeps checking', () => {
+    const rs = checkScan(rawScan([rawRowSet()])).rowSets[0];
+    const loaded = courseReducer(rated, { type: 'loadScan', course: rowSetToCourse(rs, 'Pine Valley') });
+    expect(loaded.holesSource).toBe('scan');
+    expect(loaded.course).toBe('Pine Valley');
+    expect(loaded.holes).toHaveLength(18);
+    expect([loaded.slope, loaded.rating, loaded.ratingHoles]).toEqual([undefined, undefined, undefined]);
+    expect(loaded.savedNote?.text).toBe('Loaded "Pine Valley" from your photo — par + stroke index');
+    expect(deriveCourse(loaded).importIssues).toEqual([]);
+
+    // A par changed to one the card's printed total disagrees with: the
+    // check is live, as it is for search.
+    const edited = courseReducer(loaded, { type: 'par', number: 1, par: 5 });
+    expect(deriveCourse(edited).importIssues).toEqual(['The card adds up to par 73; the course is listed as par 72.']);
+  });
+
+  it('plays a back nine as holes 10–18, ranked 1–9', () => {
+    const rs = checkScan(rawScan([rawRowSet({}, { first: 10, n: 9 })])).rowSets[0];
+    const loaded = courseReducer(initialCourseState, { type: 'loadScan', course: rowSetToCourse(rs, 'Back') });
+    expect(loaded.holeCount).toBe(9);
+    expect(loaded.holes.map((h) => h.number)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18]);
+    expect(loaded.holes.map((h) => h.strokeIndex).sort((a, b) => a! - b!)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(loaded.nine).toBe('back');
+    expect(deriveCourse(loaded).importIssues).toEqual([]);
+  });
+
+  it('re-ranks a front nine’s odd indexes to 1–9', () => {
+    const rs = checkScan(rawScan([rawRowSet({}, { n: 9 })])).rowSets[0];
+    const loaded = courseReducer(initialCourseState, { type: 'loadScan', course: rowSetToCourse(rs, '') });
+    expect(loaded.holes.map((h) => h.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(loaded.holes[1].strokeIndex).toBe(1);
+    expect(loaded.savedNote?.text).toBe('Loaded from your photo — par + stroke index');
+  });
+
+  it('is vouched for, like search, once saved', () => {
+    const rs = checkScan(rawScan([rawRowSet()])).rowSets[0];
+    const loaded = courseReducer(initialCourseState, { type: 'loadScan', course: rowSetToCourse(rs, 'X') });
+    const saved = courseReducer(loaded, { type: 'saved', name: 'X', from: 'check' });
+    expect(saved.holesSource).toBe('saved');
+    expect(deriveCourse(saved).importIssues).toEqual([]);
   });
 });

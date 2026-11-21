@@ -143,6 +143,7 @@ export function Setup({ onCancel, onStart }: Props) {
     setSendingCourse,
     loadCourse,
     loadFromApi,
+    loadFromScan,
     saveFavorite,
     removeCourse,
   } = useCourse({ openRow, setError });
@@ -426,6 +427,7 @@ export function Setup({ onCancel, onStart }: Props) {
             course={cs.course}
             onCourse={(name) => dispatch({ type: 'course', name })}
             onPick={loadFromApi}
+            onScan={loadFromScan}
             courses={courses}
             onLoad={loadCourse}
             onSend={setSendingCourse}

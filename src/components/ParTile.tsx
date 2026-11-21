@@ -4,6 +4,8 @@ interface Props {
   hole: number;
   par: number;
   onChange: (par: number) => void;
+  /** Marked as worth a second look — a par the scan read outside 3–6. */
+  flagged?: boolean;
 }
 
 /**
@@ -14,11 +16,16 @@ interface Props {
  * edit. The accessible name carries the value, since a button's text alone
  * would read as a bare number.
  */
-export function ParTile({ hole, par, onChange }: Props) {
+export function ParTile({ hole, par, onChange, flagged = false }: Props) {
   return (
-    <button type="button" className="par-tile" onClick={() => onChange(nextPar(par))}>
+    <button
+      type="button"
+      className={`par-tile${flagged ? ' flagged' : ''}`}
+      onClick={() => onChange(nextPar(par))}
+    >
       <span className="sr-only">Par for hole {hole}: </span>
       {par}
+      {flagged && <span className="sr-only"> — check this</span>}
     </button>
   );
 }

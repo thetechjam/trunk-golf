@@ -20,6 +20,11 @@ npm run build          # what Netlify runs
 
 CI runs all four on every push and pull request; a PR needs them green.
 
+`npm run dev` serves the app without the one serverless function
+(`/api/scan-card`); `npx netlify dev` runs both, if you have the Netlify CLI.
+The function's code is in `netlify/` and is typechecked by
+`tsconfig.functions.json` and tested by the same `npm run test`.
+
 ## The one rule about data
 
 Rounds live on people's phones, travel in URL fragments (`src/shareLink.ts`),
@@ -44,7 +49,22 @@ Every scoring change comes with a test in `src/games/*.test.ts`; the engines
 are pure functions of a `Round`, and `src/games/testFixtures.ts` builds one.
 Screen changes get a `*.dom.test.tsx` (happy-dom, Testing Library) when the
 behaviour can be asserted without pixels. Nothing in the suite touches the
-network.
+network — the scan function's tests hand it a fake model reader, and no test
+needs or may contain an API key.
+
+## The server side
+
+There is exactly one: `netlify/functions/scan-card.mts`. Keep it that way
+unless there is a conversation first. Rules for it:
+
+- Only `netlify/lib/scanCard/readCard.ts` imports `@anthropic-ai/sdk`, and
+  nothing under `src/` imports the SDK or `netlify/lib` (a test checks).
+  Shared checks go the other way: `src/courses/scanGate.ts` is pure and is
+  imported by both.
+- Shared server code goes in `netlify/lib/`, never `netlify/functions/`:
+  every file there becomes a function of its own.
+- The key is read in `scan-card.mts` and nowhere else, and is never logged,
+  returned or committed. Log lines carry numbers and fixed words only.
 
 ## Style
 

@@ -8,6 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Scan the card.** On New Round, under course search: photograph a course's
+  printed scorecard and Trunk reads the par and stroke index for each hole.
+  What it read is shown beside the photo in a sheet you can edit — with more
+  than one row on the card (men's and ladies', say) it asks which you are
+  playing and picks nothing for you — and nothing reaches New Round until you
+  tap "Use these pars". A par no hole has is marked and has to be fixed first;
+  pars that do not add up to the card's printed Out, In or Total are named,
+  and the button becomes "Use these anyway"; stroke indexes that are not a
+  clean ranking are left out and said so. A photo of one nine sets up a
+  nine-hole round, keeping 10–18 for a back nine. The numbers then sit under
+  the same "Check these against the card" note search gets. The photo is
+  shrunk and re-encoded on the phone (which drops its location and camera
+  details) and read by Claude Haiku 5.5, with one retry on Claude Sonnet 5.5
+  when the checks fail, through a Netlify Function — Trunk's first piece of
+  server code, which stores and logs nothing of the photo or the reading. Off
+  until the site has a key (see the README); not offered in the native shell.
+  The privacy page says where the photo goes.
 - **Scramble.** A new format with its own setup, next to League on Home: up
   to four teams of two to four playing one ball, a shotgun starting hole, a
   tee-shot minimum (None or 1–6 each) and, with two or more teams, a stake

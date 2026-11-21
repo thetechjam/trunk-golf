@@ -186,3 +186,10 @@ export const QrIcon = ({ size = 18, className }: IconProps) => (
     <path d="M14.5 14.5h2M20.5 14.5v2M14.5 20.5h6M18 18h.01" />
   </svg>
 );
+
+export const CameraIcon = ({ size = 18, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+    <circle cx="12" cy="13" r="3.5" />
+  </svg>
+);

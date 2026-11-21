@@ -38,6 +38,21 @@ Nothing leaves your device unless you do one of these things:
   nothing. Contains data from OpenGolfAPI (opengolfapi.org), © OpenStreetMap
   contributors, ODbL 1.0; the offline list is published under the same licence
   at https://trunk.golf/courses/opengolfapi-us.json.
+- **Scanning a scorecard.** On New Round, Scan the card sends one photo you
+  pick to Trunk's server (a Netlify function at trunk.golf/api/scan-card) and
+  on to Anthropic's API, where an AI model reads the pars and stroke indexes
+  off it. Before it leaves your device the photo is shrunk and re-encoded,
+  which drops location and camera details stored in the file. Whatever is in
+  the frame goes with it, handwriting included — names and scores written on
+  the card too — so photograph the printed card rather than a filled-in one.
+  Trunk's code neither stores nor logs the photo or what was read from it; it
+  logs only that a scan happened, which model answered, how long it took, how
+  many tokens it used and whether it worked. Netlify, which runs the function,
+  and Anthropic, which runs the model, handle the request under their own
+  terms: [Netlify's privacy policy](https://www.netlify.com/privacy/) and
+  [Anthropic's privacy policy](https://www.anthropic.com/legal/privacy).
+  Nothing is sent until you pick a photo, and nothing that was read is used
+  until you tap to use it.
 - **Sending feedback.** Settings → Send feedback posts what you write — the
   report, and your name if you give one — together with a few diagnostics
   (which screen you were on, the app version and build, your browser's

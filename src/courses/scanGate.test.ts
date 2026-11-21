@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assessRowSet, checkScan, cleanText, rowSetToCourse, type ScannedRowSet } from './scanGate';
+import { assessRowSet, checkScan, cleanText, reviveRowSets, rowSetToCourse, type ScannedRowSet } from './scanGate';
 import { sliceCourseHoles } from './openGolfApi';
 import { PARS, SI, LADIES_PARS, rawRowSet, rawScan } from './scanFixtures';
 
@@ -248,5 +248,19 @@ describe('rowSetToCourse', () => {
       rawScan([rawRowSet({ printed_par_out: null, printed_par_in: null, printed_par_total: null })])
     ).rowSets[0];
     expect(rowSetToCourse(rs, 'x').listedPar).toBeUndefined();
+  });
+});
+
+describe('reviveRowSets', () => {
+  it('round-trips what the server sends', () => {
+    const g = checkScan(rawScan([rawRowSet(), rawRowSet({}, { first: 10, n: 9 })]));
+    const wire = JSON.parse(JSON.stringify(g.rowSets));
+    expect(reviveRowSets(wire)).toEqual(g.rowSets);
+  });
+
+  it('keeps siDropped and drops anything malformed', () => {
+    const rs = { ...checkScan(rawScan([rawRowSet()])).rowSets[0], siDropped: true };
+    expect(reviveRowSets([rs, { holes: 'x' }, null, 7])).toEqual([rs]);
+    expect(reviveRowSets('nope')).toEqual([]);
   });
 });
