@@ -29,11 +29,11 @@ export function useCourse({ openRow, setError }: Options) {
   const [sendingCourse, setSendingCourse] = useState<SavedCourse | null>(null);
 
   /**
-   * Both course loaders open the Holes & pars row. Either one rewrites up to
+   * Every course loader opens the Holes & pars row. Each one rewrites up to
    * eighteen pars and stroke indexes at a stroke, and doing that behind a
    * collapsed section is how a wrong number reaches the first tee unseen. What
    * differs between them is the warning, not whether the numbers are shown:
-   * only search data is second-guessed — see the reducer.
+   * only search and scan data are second-guessed — see the reducer.
    */
   const loadCourse = (c: SavedCourse) => {
     dispatch({ type: 'loadSaved', course: c });
@@ -42,6 +42,13 @@ export function useCourse({ openRow, setError }: Options) {
 
   const loadFromApi = (c: FetchedCourse) => {
     dispatch({ type: 'loadSearch', course: c });
+    openRow('holes');
+    setError('');
+  };
+
+  /** A card read from a photo, after the user confirmed it in the scan sheet. */
+  const loadFromScan = (c: FetchedCourse) => {
+    dispatch({ type: 'loadScan', course: c });
     openRow('holes');
     setError('');
   };
@@ -100,6 +107,7 @@ export function useCourse({ openRow, setError }: Options) {
     setSendingCourse,
     loadCourse,
     loadFromApi,
+    loadFromScan,
     saveFavorite,
     removeCourse,
   };

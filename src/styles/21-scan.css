@@ -1,0 +1,162 @@
+/* ---------- Scan the card ---------- */
+/* The button under course search, and the sheet that shows what was read
+   beside the photo it was read from (src/components/ScanCard.tsx). */
+.scan-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+.scan-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+}
+.scan-card .hint {
+  margin: 0;
+}
+
+/* Photo first, numbers under it on a phone held upright: the eye goes from a
+   cell in the photo straight down to its tile. Side by side once there is
+   room for both at a readable size. */
+.scan-review {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.scan-photo {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--bg);
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.scan-photo img {
+  display: block;
+  width: 100%;
+  max-height: 40vh;
+  object-fit: contain;
+}
+/* Tapped: the photo at its full width and height, for reading a small cell.
+   The sheet scrolls, so nothing is lost below it. */
+.scan-photo.big {
+  cursor: zoom-out;
+}
+.scan-photo.big img {
+  max-height: none;
+}
+.scan-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+@media (min-width: 600px) {
+  .scan-review {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  /* Held in view while the numbers beside it scroll, so a cell can be
+     checked against the photo without scrolling back up. */
+  .scan-photo {
+    position: sticky;
+    top: 0;
+  }
+  .scan-photo img {
+    max-height: 70vh;
+  }
+}
+
+.scan-rows {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.scan-rows legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.scan-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--card);
+}
+.scan-row.active {
+  border-color: var(--green-600);
+  background: color-mix(in srgb, var(--green-600) 8%, var(--card));
+}
+.scan-row input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--green-600);
+}
+.scan-row-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.scan-row-label {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.scan-row-detail {
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
+
+.scan-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.scan-flags:empty {
+  display: none;
+}
+.scan-flag {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--gold) 16%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--line));
+}
+.scan-flag.bad {
+  background: color-mix(in srgb, var(--over-strong) 10%, var(--card));
+  border-color: color-mix(in srgb, var(--over-strong) 40%, var(--line));
+}
+.scan-flag.muted {
+  background: none;
+  border-color: var(--line);
+  color: var(--muted);
+}
+/* A par the scan read outside 3–6: the tile itself says so, not only the
+   line under the grid. The outline survives glare mode's flattened fills. */
+.par-tile.flagged {
+  border-color: var(--over-strong);
+  outline: 2px solid var(--over-strong);
+  outline-offset: -2px;
+  color: var(--over-strong);
+}
+
+.scan-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

@@ -2,6 +2,7 @@ import type { Dispatch } from 'react';
 import type { SavedCourse } from '../../types';
 import type { FetchedCourse } from '../../courses/openGolfApi';
 import { CourseSearch } from '../../components/CourseSearch';
+import { ScanCard } from '../../components/ScanCard';
 import { SavedCourseList } from '../../components/SavedCourseList';
 import { ParGrid } from '../../components/ParGrid';
 import { StrokeIndexNote } from '../../components/StrokeIndexNote';
@@ -13,6 +14,8 @@ interface CourseProps {
   course: string;
   onCourse: (name: string) => void;
   onPick: (course: FetchedCourse) => void;
+  /** A card read from a photo of the printed scorecard, once confirmed. */
+  onScan: (course: FetchedCourse) => void;
   courses: SavedCourse[];
   onLoad: (course: SavedCourse) => void;
   onSend: (course: SavedCourse) => void;
@@ -22,10 +25,12 @@ interface CourseProps {
 }
 
 /** The body of New Round's Course row: the search field and the saved courses. */
-export function CourseSection({ course, onCourse, onPick, courses, onLoad, onSend, onRemove, note }: CourseProps) {
+export function CourseSection({ course, onCourse, onPick, onScan, courses, onLoad, onSend, onRemove, note }: CourseProps) {
   return (
     <>
       <CourseSearch value={course} onChange={onCourse} onPick={onPick} />
+
+      <ScanCard courseName={course} onApply={onScan} />
 
       <SavedCourseList courses={courses} onLoad={onLoad} onSend={onSend} onRemove={onRemove} />
 
@@ -111,11 +116,13 @@ export function HolesSection({
           the answer at the foot of the row instead (below the whole par
           grid, a screenful away) would read as the press having
           dismissed a warning and done nothing else. */}
-      {holesSource === 'search' ? (
+      {holesSource === 'search' || holesSource === 'scan' ? (
         <p className={`check-note${importIssues.length ? ' bad' : ''}`} role="status">
-          <strong>Check these against the card.</strong> Pars and stroke indexes from
-          course search are open community data and are sometimes wrong — a par out by one
-          shifts every net score and Stableford point for the whole round.
+          <strong>Check these against the card.</strong>{' '}
+          {holesSource === 'scan'
+            ? 'They were read from your photo by an AI model, which can misread a number'
+            : 'Pars and stroke indexes from course search are open community data and are sometimes wrong'}{' '}
+          — a par out by one shifts every net score and Stableford point for the whole round.
           {importIssues.length > 0 && (
             <>
               {' '}
@@ -220,7 +227,7 @@ export function HolesSection({
           which one is the real one. This is the general path — a course
           typed or preset by hand — and the call-out's is the prompt at
           the moment it matters. */}
-      {holesSource !== 'search' && (
+      {holesSource !== 'search' && holesSource !== 'scan' && (
         <button className="btn-ghost add" onClick={() => onSave('foot')}>
           <StarIcon size={16} /> Save this course for next time
         </button>

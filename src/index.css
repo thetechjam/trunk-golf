@@ -22,6 +22,7 @@
 @import './styles/14-new-round.css'; /* New Round rows and player recall chips */
 @import './styles/15-stats.css'; /* Stats and its charts */
 @import './styles/20-scramble.css'; /* Scramble shot credits and the tee-shots board */
+@import './styles/21-scan.css'; /* Scan the card: the button and the confirm sheet */
 @import './styles/16-hover.css'; /* Pointer hover */
 @import './styles/17-league-trips.css'; /* League standings, trips, same-person prompt */
 @import './styles/18-reduced-motion.css'; /* Reduced motion */

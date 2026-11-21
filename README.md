@@ -7,9 +7,11 @@ side-games. One scorekeeper enters scores for the whole group on a single
 phone, and Trunk does the math — live leaderboards and running money totals
 while you play, then a settle-up summary at the end.
 
-No accounts, no sign-up, nothing to install from a store. It runs entirely in
-your browser, works offline, and keeps everything on your device — see
-[PRIVACY.md](./PRIVACY.md) for exactly what leaves it and when.
+No accounts, no sign-up, nothing to install from a store. It runs in your
+browser, works offline, and keeps everything on your device. The one feature
+that needs a server is optional: *Scan the card* sends a photo of a course's
+printed scorecard to a small serverless function to be read — see
+[PRIVACY.md](./PRIVACY.md) for exactly what leaves the device and when.
 
 **▶️ Live app: [trunk.golf](https://trunk.golf)**
 
@@ -80,8 +82,8 @@ the shared scoreboard image, and each one cites the number behind it.
 Results can go out as a scoreboard image, a scorecard image, or plain text —
 and the round itself can be handed to another phone by link or QR code. The
 whole round is packed into the link's fragment, so it is decoded by the other
-person's copy of Trunk and never touches a server: no account, no backend, and
-it opens with no signal. A round that arrives is held behind a "Keep it"
+person's copy of Trunk and never touches a server: no account, nothing stored
+anywhere but the phones, and it opens with no signal. A round that arrives is held behind a "Keep it"
 button rather than being saved onto someone's device unasked.
 
 Saved courses can be sent the same way — the other phone gets the pars and
@@ -155,12 +157,60 @@ npm run build
 npm run screenshots:capture   # needs Playwright (see above) or PLAYWRIGHT_CHROMIUM=/path/to/chrome
 ```
 
+`npm run dev` serves the app only. The one serverless function
+(`/api/scan-card`, below) is not part of it, so *Scan the card* says scanning
+"isn't available right now" there — the SPA shell answers in its place. To run
+the function locally too, use `npx netlify dev` (the Netlify CLI is not a
+dependency of this repo) with `TRUNK_SCAN_ANTHROPIC_KEY` in your shell.
+
 ## How it's built
 
 Vite + React + TypeScript, shipped as an installable PWA. Each game is a
 pure-function scoring engine in [`src/games/`](./src/games), kept separate from
 the UI so the math is unit-tested independently. Deployed to Netlify on every
 push to `main`.
+
+The app itself has no backend. The exception is *Scan the card*: one Netlify
+Function, [`netlify/functions/scan-card.mts`](./netlify/functions/scan-card.mts),
+with its logic in [`netlify/lib/scanCard/`](./netlify/lib/scanCard) and the
+checks it shares with the browser in
+[`src/courses/scanGate.ts`](./src/courses/scanGate.ts).
+
+## Scan setup (Netlify)
+
+*Scan the card* reads per-hole par and stroke index from a photo of a course's
+printed scorecard. The browser shrinks the photo to 1568 px on the long edge
+and posts the JPEG bytes to `/api/scan-card`; the function asks Claude Haiku
+5.5 to read it, checks the reading (pars 3–6, stroke index a full ranking,
+pars adding up to the printed Out / In / Total), and asks Claude Sonnet 5.5
+once more when the checks fail. Whatever comes back is shown beside the photo
+for the user to check and correct; nothing is filled in until they tap.
+
+It is **off until a key is set**: without one the function answers
+`503 not_configured` and the app says scanning isn't switched on yet. To turn
+it on:
+
+1. In the [Claude Console](https://platform.claude.com), create a workspace
+   just for Trunk and give it a **monthly spend limit**. The limit is the real
+   backstop; when it is reached the app says scanning is paused.
+2. Create an API key **in that workspace**.
+3. In Netlify: **Site configuration → Environment variables → Add a
+   variable**. Key `TRUNK_SCAN_ANTHROPIC_KEY`, mark it **secret**, scope it
+   to **Functions** only, and paste the key as the value. Do not use
+   `ANTHROPIC_API_KEY`: Netlify's AI Gateway can inject that name itself, and
+   the function deliberately ignores it.
+4. **Redeploy** (Deploys → Trigger deploy). Functions get their environment
+   at deploy time.
+5. Scan a card from New Round, then check the workspace's usage in the
+   Console.
+
+Limits, all in code: one photo per scan, JPEG only, 2.5 MB at most; six scans
+per three minutes per IP address (a Netlify rate-limit rule declared in the
+function's `config`); a 26-second budget per scan, because the deploy preview
+cut off responses that took longer than 30 seconds (Haiku gets 10 s, the
+Sonnet retry 14 s, and is skipped if there is no time left). The function logs
+one line per scan — outcome, model, attempts, milliseconds and token counts —
+and never the key, the photo or what was read.
 
 ## Feedback setup (Netlify)
 

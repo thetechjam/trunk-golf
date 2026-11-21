@@ -33,6 +33,16 @@ const CLAIMS = [
   'pressgolf.netlify.app if that is where you opened Trunk',
   'older address is being retired',
   'restore it at trunk.golf',
+  // Scan the card: where the photo goes, what is and is not kept, and what
+  // travels with it.
+  'Scanning a scorecard',
+  "Anthropic's API, where an AI model",
+  'shrunk and re-encoded',
+  'drops location and camera',
+  'handwriting included',
+  'neither stores nor logs the photo',
+  'https://www.anthropic.com/legal/privacy',
+  'https://www.netlify.com/privacy/',
 ];
 
 describe('the privacy page', () => {
