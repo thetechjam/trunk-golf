@@ -21,8 +21,8 @@ import {
  */
 
 /** Pars outside this are possible but vanishingly rare, and usually bad data. */
-const MIN_PAR = 3;
-const MAX_PAR = 6;
+export const MIN_PAR = 3;
+export const MAX_PAR = 6;
 
 /**
  * How many of a nine may sit on the wrong parity before the allocation stops

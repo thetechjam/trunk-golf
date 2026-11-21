@@ -49,7 +49,7 @@ export default defineConfig({
     // Vitest 4 dropped environmentMatchGlobs, and the docblock says which
     // environment a file runs in where somebody reading that file will see it.
     environment: 'node',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'netlify/**/*.test.ts'],
     // Puts happy-dom's localStorage back where Node 25+ defines its own — see the file.
     setupFiles: ['./src/testSetup.ts'],
   },

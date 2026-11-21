@@ -22,10 +22,12 @@
     "courses:snapshot": "node scripts/course-snapshot.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.12.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@netlify/functions": "^6.1.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.12",
     "@types/node": "^26.6.6",
