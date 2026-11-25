@@ -560,9 +560,10 @@ describe('the prompt after the first finished round', () => {
     expect(prompt.textContent).toMatch(/home screen/);
     expect(screen.getByRole('button', { name: 'Save a backup' })).toBeTruthy();
 
-    await user.click(screen.getByRole('button', { name: /Don.t ask again/ }));
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
     expect(screen.queryByText('Keep these rounds.')).toBeNull();
     expect(getSettings().firstFinishPromptDismissed).toBe(true);
+    expect(getSettings().backupNudgeSnoozedAt).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('button', { name: 'Home' }));
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
@@ -580,6 +581,7 @@ describe('the prompt after the first finished round', () => {
     expect(await screen.findByText('Backup saved.')).toBeTruthy();
     // The backup was the answer: it is remembered, and the way out says so.
     expect(getSettings().firstFinishPromptDismissed).toBe(true);
+    expect(getSettings().lastBackupAt).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByText('Keep these rounds.')).toBeNull();
@@ -595,7 +597,7 @@ describe('the prompt after the first finished round', () => {
     render(<App />);
     const restore = refuseStorageKey('press.settings.v1');
     try {
-      await user.click(screen.getByRole('button', { name: /Don.t ask again/ }));
+      await user.click(screen.getByRole('button', { name: 'Not now' }));
       expect(screen.queryByText('Keep these rounds.')).toBeNull();
     } finally {
       restore();
