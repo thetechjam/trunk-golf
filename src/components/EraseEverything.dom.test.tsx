@@ -84,6 +84,66 @@ describe('Erase everything', () => {
   });
 });
 
+describe('where Erase everything sits', () => {
+  const tipRow = () => screen.getByRole('link', { name: /buy me a coffee/i });
+  const about = () => document.querySelector('.about')!;
+  const follows = (a: Node, b: Node) =>
+    Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  it('comes after the tip row and the version block', () => {
+    render(<SettingsSheet onClose={() => {}} screen="home" />);
+    expect(follows(tipRow(), about())).toBe(true);
+    expect(follows(about(), armButton())).toBe(true);
+  });
+
+  it('is never the tip row’s neighbour', () => {
+    render(<SettingsSheet onClose={() => {}} screen="home" />);
+    const row = tipRow();
+    expect(row.nextElementSibling?.classList.contains('set-erase') ?? false).toBe(false);
+    expect(row.previousElementSibling?.classList.contains('set-erase') ?? false).toBe(false);
+  });
+
+  it('is the last thing in the sheet, in its own danger section', () => {
+    render(<SettingsSheet onClose={() => {}} screen="home" />);
+    const section = armButton().closest('.set-erase')!;
+    expect(section.classList.contains('set-danger')).toBe(true);
+    expect(section.nextElementSibling).toBeNull();
+  });
+
+  it('stays there once armed', () => {
+    render(<SettingsSheet onClose={() => {}} screen="home" />);
+    const section = armButton().closest('.set-erase')!;
+    fireEvent.click(armButton());
+    expect(section.contains(confirmButton())).toBe(true);
+    expect(section.nextElementSibling).toBeNull();
+    expect(follows(about(), confirmButton())).toBe(true);
+  });
+
+  it('scrolls the armed copy and buttons into view, and only on arming', () => {
+    // The section is at the bottom of a scrolling sheet and grows downward
+    // when armed; without this the two buttons land below the sheet's edge.
+    const scrolled: Element[] = [];
+    const spy = vi
+      .spyOn(Element.prototype, 'scrollIntoView')
+      .mockImplementation(function (this: Element) {
+        scrolled.push(this);
+      });
+    render(<SettingsSheet onClose={() => {}} screen="home" />);
+    const section = armButton().closest('.set-erase')!;
+    expect(spy).not.toHaveBeenCalled();
+
+    fireEvent.click(armButton());
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(scrolled).toEqual([section]);
+    // By the time it scrolls, the buttons it is scrolling to are there.
+    expect(section.contains(confirmButton())).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('Erase everything when a key will not go', () => {
   it('erases a key Trunk could not read at startup, and every key after it', async () => {
     const disk = new Map<string, string>(PERSISTED_KEYS.map((k) => [k, '"x"']));
