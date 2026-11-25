@@ -50,9 +50,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead.
 - **A prompt after the first finished round** to save a backup and add Trunk
   to the home screen. Safari deletes a site’s data after seven days without
-  a visit otherwise. "Don’t ask again", or a successful backup, stops it for
-  good. Phones that already had a finished round are not asked, and a phone
-  that cannot store the choice still starts.
+  a visit otherwise. "Not now", or a successful backup, puts it away; a phone
+  that cannot store the choice still starts. In a Safari tab it says to back
+  up first, because the home screen app starts empty.
+- **A reminder when rounds aren’t backed up.** Trunk now records when a
+  backup was last saved, and the same card returns on Home and Results when
+  finished rounds have changed since: after one round and two quiet weeks in
+  a Safari tab, three rounds and a month in other browsers, ten rounds and
+  three months in an installed app. "Not now" waits out the same quiet
+  period. Phones that already had a finished round when the first prompt
+  arrived, and were never asked, get the reminder too.
+- **The last backup in Settings.** Under "Back up your rounds": "Never backed
+  up", or "Last backup: Tuesday · 2 rounds since". It updates as soon as a
+  backup or restore finishes. A full restore counts as a backup, so moving
+  rounds to a new home does not set off the reminder.
+- **Bringing rounds from Safari to the home screen app.** On iPhone, iPad and
+  Mac, a Trunk added to the home screen or Dock has its own storage and opens
+  empty. After a backup in a Safari tab, Trunk says the next steps: add it to
+  the home screen (with how), open it, restore the backup. An empty home
+  screen app asks "Played in Safari first?" and offers the restore there.
 - **Erase everything**, at the bottom of Settings. The privacy page said
   there was no single wipe button in Trunk yet; now there is. Two taps, as
   deleting from Rounds → Select: the first says what goes —
@@ -107,6 +123,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path on `https://trunk.golf` with a permanent (301) redirect.
 
 ### Changed
+- **The home screen tip depends on where Trunk is running.** Hidden once Trunk
+  is installed; in Safari it gives the steps (Share, then Add to Home Screen)
+  and, when there are rounds, says to back up first; elsewhere it no longer
+  mentions Safari.
+- **The storage line in Settings no longer says "Storage protected" in a
+  Safari tab.** Keeping storage does not lift Safari’s seven-day rule there,
+  so the line reads "Storage: browser tab — cleared after 7 days unused".
+  Trunk also waits until there is a round to keep before asking the browser
+  to keep its storage, so a first visit in Firefox no longer opens with a
+  permission prompt.
 - **Erase everything has moved to the bottom of Settings**, under the version
   block and behind its own rule. It used to sit directly above Buy me a
   coffee, which is the wrong neighbour for a button that removes everything.

@@ -19,6 +19,13 @@ is copied to a server. Trunk asks the browser to treat that storage as
 persistent so it is not cleared when space is tight; installing Trunk to your
 home screen is the surest way to keep it.
 
+Your settings also record when you last saved a backup, so Trunk can say how
+many rounds have changed since. That date stays on this device and is not put
+in the backup file. Safari deletes a site's saved data after seven days
+without a visit, unless Trunk is on your home screen. A Trunk added to the
+home screen keeps its own storage, separate from Safari's, and starts empty:
+save a backup in Safari and restore it there to bring your rounds across.
+
 There are no cookies, no tracking pixels, no third-party scripts and no
 usage analytics. The app's own files are cached on your device by a service
 worker so it opens with no signal.
