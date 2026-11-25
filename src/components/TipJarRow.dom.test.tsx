@@ -58,7 +58,7 @@ describe('the tip jar row', () => {
     const feedback = screen.getByText('Send feedback');
     const about = document.querySelector('.about')!;
     const row = tipRow()!;
-    // After Send feedback, before the version block: asking comes last.
+    // After Send feedback, before the version block: last of the rows.
     expect(feedback.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(row.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

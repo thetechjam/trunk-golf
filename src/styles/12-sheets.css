@@ -497,14 +497,22 @@
   min-height: var(--tap);
 }
 
-/* Erase everything. The idle button sits at the left edge like the rows
-   above it; armed, the copy takes the width and the two choices line up under
-   it the way the bulk-delete bar in Rounds does, Cancel first. */
+/* Erase everything. The idle button sits alone under the version block,
+   left-aligned; armed, the copy takes the width and the two choices line up
+   under it the way the bulk-delete bar in Rounds does, Cancel first. */
 .set-erase {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
+}
+/* Its own section under the version block: a rule and extra air, so the one
+   control that cannot be undone is not the neighbour of anything tapped in
+   passing. */
+.set-danger {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin-top: 8px; /* on top of the sheet's 16px gap */
 }
 .set-erase-copy {
   margin: 0;

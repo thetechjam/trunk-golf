@@ -283,11 +283,55 @@ export function SettingsSheet({
             </button>
           )}
 
-          {/* The wipe the privacy page points at. Under the rows that put
-              data in and take it out, because that is what it is the last
-              of; above the tip jar, because it is still something the app
-              does for the user. */}
-          <div className="set-erase">
+          {/* Last row before the version numbers, which is where a thing the
+              app wants belongs — under everything the app is for. The wipe
+              is kept on the far side of the version block, away from it.
+
+              Two gates, and both can turn it off. `tipJarUrl()` is null when
+              there is no handle, because a jar that 404s is worse than none.
+              And it stays off in the native shell: Apple treats a link out to
+              a tip page as a purchase route around IAP, and a row worth a few
+              coffees is not worth a rejected build. The website is where the
+              coffee is. */}
+          {tipJar && (
+            <a
+              className="set-row set-action"
+              href={tipJar}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <span>
+                <span className="set-label">Buy me a coffee</span>
+                <span className="set-hint">
+                  Trunk is free, with no ads and no account. Tips keep it that way.
+                </span>
+              </span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          )}
+
+          <div className="about">
+            <div className="about-title">
+              Trunk <span className="about-ver">v{__APP_VERSION__}</span>
+            </div>
+            <div className="about-line">Build {__BUILD_STAMP__}</div>
+            <div className="about-line">Layout {layout}</div>
+            {/* Whether the browser agreed to keep the storage — see persistence.ts. */}
+            {!isNative() && <div className="about-line">{describePersistence()}</div>}
+            <div className="about-line">Created by Jesse Morrison</div>
+            <div className="about-line">PolyForm Noncommercial License 1.0.0</div>
+            {/* A static page, so it opens even when the app cannot: what is
+                stored, what leaves the phone, and how to delete it. */}
+            <a className="about-line" href="/privacy.html" target="_blank" rel="noopener noreferrer">
+              Privacy — what Trunk keeps and what leaves your phone
+            </a>
+          </div>
+
+          {/* The wipe the privacy page points at. Last thing in the sheet, under
+              the version block and behind its own rule, so it sits beside
+              nothing that gets tapped in passing — and above all not beside
+              the one row that asks for something. */}
+          <div className="set-erase set-danger">
             {eraseFailed ? (
               <>
                 <p className="set-erase-copy" role="alert">
@@ -335,49 +379,6 @@ export function SettingsSheet({
                 Erase everything
               </button>
             )}
-          </div>
-
-          {/* Last row before the version numbers, which is where a thing the
-              app wants belongs — under everything the app is for.
-
-              Two gates, and both can turn it off. `tipJarUrl()` is null when
-              there is no handle, because a jar that 404s is worse than none.
-              And it stays off in the native shell: Apple treats a link out to
-              a tip page as a purchase route around IAP, and a row worth a few
-              coffees is not worth a rejected build. The website is where the
-              coffee is. */}
-          {tipJar && (
-            <a
-              className="set-row set-action"
-              href={tipJar}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <span>
-                <span className="set-label">Buy me a coffee</span>
-                <span className="set-hint">
-                  Trunk is free, with no ads and no account. Tips keep it that way.
-                </span>
-              </span>
-              <span aria-hidden="true">↗</span>
-            </a>
-          )}
-
-          <div className="about">
-            <div className="about-title">
-              Trunk <span className="about-ver">v{__APP_VERSION__}</span>
-            </div>
-            <div className="about-line">Build {__BUILD_STAMP__}</div>
-            <div className="about-line">Layout {layout}</div>
-            {/* Whether the browser agreed to keep the storage — see persistence.ts. */}
-            {!isNative() && <div className="about-line">{describePersistence()}</div>}
-            <div className="about-line">Created by Jesse Morrison</div>
-            <div className="about-line">PolyForm Noncommercial License 1.0.0</div>
-            {/* A static page, so it opens even when the app cannot: what is
-                stored, what leaves the phone, and how to delete it. */}
-            <a className="about-line" href="/privacy.html" target="_blank" rel="noopener noreferrer">
-              Privacy — what Trunk keeps and what leaves your phone
-            </a>
           </div>
         </>
       )}

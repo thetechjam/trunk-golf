@@ -53,9 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a visit otherwise. "Don’t ask again", or a successful backup, stops it for
   good. Phones that already had a finished round are not asked, and a phone
   that cannot store the choice still starts.
-- **Erase everything**, in Settings under the backup and feedback rows. The
-  privacy page said there was no single wipe button in Trunk yet; now there
-  is. Two taps, as deleting from Rounds → Select: the first says what goes —
+- **Erase everything**, at the bottom of Settings. The privacy page said
+  there was no single wipe button in Trunk yet; now there is. Two taps, as deleting from Rounds → Select: the first says what goes —
   every round, saved course, player name, feedback waiting to send and
   setting — and the second removes all six things Trunk stores and relaunches
   the app as on first open. The browser's own clear-site-data route still
@@ -107,6 +106,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path on `https://trunk.golf` with a permanent (301) redirect.
 
 ### Changed
+- **Erase everything has moved to the bottom of Settings**, under the version
+  block and behind its own rule. It used to sit directly above Buy me a
+  coffee, which is the wrong neighbour for a button that removes everything.
+  Same two taps, same wipe.
 - **Press is now Trunk.** The app has a new name, a new mark (an open car
   trunk with a gold pin flag) and a new tagline, "Settle it at the trunk.",
   and lives at https://trunk.golf. The page title, home-screen name, icons,
