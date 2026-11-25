@@ -17,6 +17,14 @@ printed scorecard to a small serverless function to be read — see
 
 **🎬 Promo: [youtu.be/bUL6qcGF6XI](https://youtu.be/bUL6qcGF6XI)** — Trunk in 80 seconds
 
+**Landing page: [trunk.golf/welcome/](https://trunk.golf/welcome/)** — the
+page to send people who have not opened the app yet. It is a static file,
+`public/welcome/index.html` with its images beside it, not part of the React
+app, and the service worker neither precaches it nor answers it with the app
+shell. It must stay script-free: the site CSP (`netlify.toml`) blocks inline
+scripts. `src/welcomePage.test.ts` checks that, its links and images, and
+that it names every game.
+
 <p align="center">
   <img src="docs/screenshots/setup.png" width="180" alt="New Round: four players with handicaps, a saved course loaded, Nassau, Skins and Junk picked" />
   <img src="docs/screenshots/hole.png" width="180" alt="The Hole tab mid-round: one row per player with score chips, and the money ticker showing who is up" />

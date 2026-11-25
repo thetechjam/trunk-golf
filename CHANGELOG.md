@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **A landing page**, at `/welcome/` on the site: what Trunk does, the games,
+  how a round goes and what stays on the phone, for people who have not opened
+  the app yet. It is a static page beside the app with no script; the app at
+  `/` is unchanged, and an installed copy neither downloads the page nor
+  answers its address with the app.
 - **Scan the card.** On New Round, under course search: photograph a course's
   printed scorecard and Trunk reads the par and stroke index for each hole.
   What it read is shown beside the photo in a sheet you can edit — with more
