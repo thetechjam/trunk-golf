@@ -76,7 +76,7 @@ interface Props {
   initialView?: 'settings' | 'help';
   /** Offered only mid-round, and only when there is a round to hand over. */
   onHandOver?: () => void;
-  /** Called after a restore changed what is stored, so the screen behind can re-read it. */
+  /** Called after a restore changed what is stored, or a backup moved the last-backup mark, so the screen behind can re-read it. */
   onDataChanged?: () => void;
 }
 
@@ -265,7 +265,7 @@ export function SettingsSheet({
             </button>
           )}
 
-          <BackupRows onRestored={onDataChanged} />
+          <BackupRows onRestored={onDataChanged} onBackedUp={onDataChanged} />
 
           <button className="set-row set-action" onClick={() => setView('help')}>
             <span>

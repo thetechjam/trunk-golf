@@ -6,7 +6,8 @@ import App from './App';
 import type { Round } from './types';
 import { refuseStorageKey } from './testQuota';
 import { setBackend, snapshotBackend } from './kv';
-import { getSettings, skipKeepPromptIfRoundsExist } from './storage';
+import { getSettings, saveSettings, skipKeepPromptIfRoundsExist } from './storage';
+import { buildBackup } from './backup';
 
 /**
  * Navigation and the hardware back button.
@@ -621,5 +622,52 @@ describe('the prompt after the first finished round', () => {
     render(<App />);
     expect(screen.getByText('Keep these rounds.')).toBeTruthy();
     expect(getSettings().firstFinishPromptDismissed).toBe(false);
+  });
+
+  describe('the Home reminder, when Settings changes the backup', () => {
+    /** A later reminder on Home: three finished rounds, first ask already answered. */
+    const seedReminder = () => {
+      seed(['a', 'b', 'c'].map((id) => round({ id, status: 'finished', updatedAt: 5 })));
+      saveSettings({ firstFinishPromptDismissed: true });
+    };
+
+    it('goes away after a backup from Settings, without leaving Home', async () => {
+      seedReminder();
+      const user = userEvent.setup();
+      render(<App />);
+      expect(screen.getByText('3 rounds aren’t backed up.')).toBeTruthy();
+
+      await user.click(screen.getByRole('button', { name: 'Settings' }));
+      await user.click(screen.getByRole('button', { name: /Back up your rounds/i }));
+      expect(await screen.findByText('Backed up 3 rounds and 0 courses.')).toBeTruthy();
+
+      expect(getSettings().lastBackupAt).toBeGreaterThan(0);
+      expect(screen.queryByText(/aren’t backed up/)).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
+    });
+
+    it('goes away after a full restore from Settings, without leaving Home', async () => {
+      seedReminder();
+      const user = userEvent.setup();
+      const { container } = render(<App />);
+      expect(screen.getByText('3 rounds aren’t backed up.')).toBeTruthy();
+
+      await user.click(screen.getByRole('button', { name: 'Settings' }));
+      const file = buildBackup(
+        ['a', 'b', 'c'].map((id) => round({ id, status: 'finished', updatedAt: 5 })),
+        [],
+        'test',
+        new Date(),
+        undefined
+      );
+      const input = container.ownerDocument.querySelector('input[type=file]') as HTMLInputElement;
+      await user.upload(
+        input,
+        new File([JSON.stringify(file)], 'trunk-backup.json', { type: 'application/json' })
+      );
+
+      await waitFor(() => expect(getSettings().lastBackupAt).toBeGreaterThan(0));
+      expect(screen.queryByText(/aren’t backed up/)).toBeNull();
+    });
   });
 });

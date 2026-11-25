@@ -49,6 +49,9 @@ export function Home({
   onTrip,
 }: Props) {
   const [rounds, setRounds] = useState<Round[]>(listRounds);
+  // Bumped when Settings backs up or restores, so the backup reminder
+  // re-reads its status rather than showing a stale count.
+  const [nudgeKey, setNudgeKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsView, setSettingsView] = useState<'settings' | 'help'>('settings');
 
@@ -122,7 +125,7 @@ export function Home({
       <InstallPrompt />
 
       {/* Home already offers Install above. The prompt's own button would be a second one. */}
-      <KeepRoundsPrompt offerInstall={false} />
+      <KeepRoundsPrompt key={nudgeKey} offerInstall={false} />
 
       {rounds.length === 0 && (
         <div className="empty-state">
@@ -179,7 +182,10 @@ export function Home({
           initialView={settingsView}
           // A restore from this sheet used to leave "No rounds yet" on the
           // screen behind it until the next navigation.
-          onDataChanged={() => setRounds(listRounds())}
+          onDataChanged={() => {
+            setRounds(listRounds());
+            setNudgeKey((k) => k + 1);
+          }}
         />
       )}
     </div>

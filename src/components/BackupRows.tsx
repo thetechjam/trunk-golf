@@ -3,6 +3,7 @@ import { listRounds, listCourses } from '../storage';
 import { offerBackup, restoreFromFile, describeRestore } from '../backup';
 import { currentBackupStatus, type BackupStatus } from '../backupStatus';
 import { formatRoundDate, todayIso } from '../roundDate';
+import { count } from '../plural';
 
 /**
  * The Settings sheet's "Your rounds" block: write a backup file, or merge one
@@ -12,8 +13,6 @@ import { formatRoundDate, todayIso } from '../roundDate';
  * only row group there that owns async work and a status line — everything
  * else in that sheet is a switch over a single setting.
  */
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * The second hint under "Back up your rounds": when this device last handed
@@ -25,11 +24,14 @@ function backupFreshness(status: BackupStatus, hasRounds: boolean): string | nul
   if (status.lastBackupAt === null) return 'Never backed up';
   const when = formatRoundDate(todayIso(new Date(status.lastBackupAt)));
   return status.unbacked
-    ? `Last backup: ${when} · ${plural(status.unbacked, 'round')} since`
+    ? `Last backup: ${when} · ${count(status.unbacked, 'round')} since`
     : `Last backup: ${when}`;
 }
 
-export function BackupRows({ onRestored }: { onRestored?: () => void } = {}) {
+export function BackupRows({
+  onRestored,
+  onBackedUp,
+}: { onRestored?: () => void; onBackedUp?: () => void } = {}) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
@@ -51,7 +53,8 @@ export function BackupRows({ onRestored }: { onRestored?: () => void } = {}) {
       return;
     }
     setBackup(currentBackupStatus());
-    say(`Backed up ${plural(counts.rounds, 'round')} and ${plural(counts.courses, 'course')}.`);
+    say(`Backed up ${count(counts.rounds, 'round')} and ${count(counts.courses, 'course')}.`);
+    onBackedUp?.();
   };
 
   const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +82,7 @@ export function BackupRows({ onRestored }: { onRestored?: () => void } = {}) {
           <span className="set-hint">
             {counts.rounds === 0
               ? 'Nothing saved on this device yet'
-              : `Save ${plural(counts.rounds, 'round')} and ${plural(
+              : `Save ${count(counts.rounds, 'round')} and ${count(
                   counts.courses,
                   'course'
                 )} to a file`}

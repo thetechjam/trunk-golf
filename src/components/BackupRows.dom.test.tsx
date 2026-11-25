@@ -67,13 +67,40 @@ describe('the last-backup line', () => {
     expect(hints()).toContain('Last backup: Today');
   });
 
+  it('tells the screen behind after a successful export', async () => {
+    const user = userEvent.setup();
+    store([finished('a', Date.now() - DAY)]);
+    vi.spyOn(backup, 'offerBackup').mockResolvedValue({ ok: true });
+    const onBackedUp = vi.fn();
+    const onRestored = vi.fn();
+    render(<BackupRows onBackedUp={onBackedUp} onRestored={onRestored} />);
+    await user.click(screen.getByRole('button', { name: /Back up your rounds/i }));
+    expect(await screen.findByText('Backed up 1 round and 0 courses.')).toBeTruthy();
+    expect(onBackedUp).toHaveBeenCalledTimes(1);
+    expect(onRestored).not.toHaveBeenCalled();
+  });
+
   it('leaves the line alone when the share sheet is closed', async () => {
     const user = userEvent.setup();
     store([finished('a', Date.now())]);
-    vi.spyOn(backup, 'offerBackup').mockResolvedValue({ ok: false, aborted: true });
-    render(<BackupRows />);
+    const offer = vi.spyOn(backup, 'offerBackup').mockResolvedValue({ ok: false, aborted: true });
+    const onBackedUp = vi.fn();
+    render(<BackupRows onBackedUp={onBackedUp} />);
     await user.click(screen.getByRole('button', { name: /Back up your rounds/i }));
+    await vi.waitFor(() => expect(offer).toHaveBeenCalledOnce());
     expect(hints()).toContain('Never backed up');
+    expect(onBackedUp).not.toHaveBeenCalled();
+  });
+
+  it('does not tell the screen behind when the export fails', async () => {
+    const user = userEvent.setup();
+    store([finished('a', Date.now())]);
+    vi.spyOn(backup, 'offerBackup').mockResolvedValue({ ok: false, aborted: false });
+    const onBackedUp = vi.fn();
+    render(<BackupRows onBackedUp={onBackedUp} />);
+    await user.click(screen.getByRole('button', { name: /Back up your rounds/i }));
+    expect(await screen.findByText("That backup couldn't be saved.")).toBeTruthy();
+    expect(onBackedUp).not.toHaveBeenCalled();
   });
 
   it('counts finished rounds changed since the backup', () => {
