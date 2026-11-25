@@ -475,6 +475,7 @@ describe('offerBackup records when a backup was handed over', () => {
 
 describe('a restore that covers everything on the device counts as a backup', () => {
   beforeEach(() => store.clear());
+  const done = (id: string, updatedAt: number) => round(id, updatedAt, { status: 'finished' });
 
   it('sets lastBackupAt after a restore into an empty device', () => {
     const before = Date.now();
@@ -489,18 +490,28 @@ describe('a restore that covers everything on the device counts as a backup', ()
     expect(getSettings().lastBackupAt).not.toBeNull();
   });
 
-  it('does not when the device holds a round the file lacks', () => {
-    store.set('press.rounds.v1', text([round('mine', 5)]));
-    const r = restoreBackup(text(buildBackup([round('b', 6)], [], '1.0.0')));
+  it('does not when the device holds a finished round the file lacks', () => {
+    store.set('press.rounds.v1', text([done('mine', 5)]));
+    const r = restoreBackup(text(buildBackup([done('b', 6)], [], '1.0.0')));
     expect(r.ok).toBe(true);
     expect(getSettings().lastBackupAt).toBeNull();
   });
 
-  it("does not when the device's copy is newer than the file's", () => {
-    store.set('press.rounds.v1', text([round('a', 9)]));
-    const r = restoreBackup(text(buildBackup([round('a', 5)], [], '1.0.0')));
+  it("does not when the device's finished copy is newer than the file's", () => {
+    store.set('press.rounds.v1', text([done('a', 9)]));
+    const r = restoreBackup(text(buildBackup([done('a', 5)], [], '1.0.0')));
     expect(r.ok).toBe(true);
     expect(getSettings().lastBackupAt).toBeNull();
+  });
+
+  it('sets it when the only round the file lacks is one still in progress', () => {
+    // The nudge counts only finished rounds, so neither does the coverage check:
+    // a round being played here must not stop a transfer counting as a backup.
+    store.set('press.rounds.v1', text([round('playing', 9, { status: 'in_progress' })]));
+    const before = Date.now();
+    const r = restoreBackup(text(buildBackup([done('a', 5), done('b', 6)], [], '1.0.0')));
+    expect(r.ok).toBe(true);
+    expect(getSettings().lastBackupAt).toBeGreaterThanOrEqual(before);
   });
 
   it('does not for a file with no rounds in it', () => {

@@ -396,11 +396,13 @@ export function restoreBackup(text: string): RestoreResult {
   // move — leaves this device holding nothing the file does not. When every
   // round here is in the file at least as new, the file is a complete backup
   // of this device, so record it; otherwise the backup nudge would fire
-  // straight after a transfer.
+  // straight after a transfer. Only finished rounds count, as they do for the
+  // nudge: a round in progress here is not yet anything to back up.
   const inFile = new Map(parsed.file.rounds.map((r) => [r.id, r.updatedAt]));
+  const finished = rounds.rounds.filter((r) => r.status === 'finished');
   const covered =
     rounds.rounds.length > 0 &&
-    rounds.rounds.every((r) => (inFile.get(r.id) ?? -Infinity) >= r.updatedAt);
+    finished.every((r) => (inFile.get(r.id) ?? -Infinity) >= r.updatedAt);
   if (covered) saveSettings({ lastBackupAt: Date.now() });
 
   return {
