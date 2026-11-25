@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   buildBackup,
   backupFilename,
@@ -6,8 +6,12 @@ import {
   mergeRounds,
   mergeCourses,
   restoreBackup,
+  restoreFromFile,
+  describeRestore,
+  offerBackup,
   BACKUP_FORMAT,
 } from './backup';
+import { getSettings } from './storage';
 import { makeRound, player, scrambleRound } from './games/testFixtures';
 import { creditShot, driveStatus } from './games/scramble';
 import type { Round, SavedCourse } from './types';
@@ -405,5 +409,188 @@ describe('a scramble in a backup', () => {
     const parsed = parseBackup(text(buildBackup([round('a', 1)], [], '1.0.0')));
     if (!parsed.ok) throw new Error('unreadable');
     expect('shots' in parsed.file.rounds[0]).toBe(false);
+  });
+});
+
+describe('offerBackup records when a backup was handed over', () => {
+  // Vitest runs in node: there is no share sheet and no document. Each case
+  // stands one in, and puts the runner's own navigator back afterwards so the
+  // localStorage stub at the top of this file is left alone.
+  const realNavigator = globalThis.navigator;
+  const now = new Date('2026-11-25T18:30:00Z');
+
+  beforeEach(() => store.clear());
+  afterEach(() => {
+    vi.stubGlobal('navigator', realNavigator);
+    vi.stubGlobal('document', undefined);
+  });
+
+  const shareSheet = (share: () => Promise<void>) =>
+    vi.stubGlobal('navigator', { canShare: () => true, share });
+
+  it('stores lastBackupAt as the time passed in when the share sheet takes the file', async () => {
+    shareSheet(async () => {});
+    expect(await offerBackup(now)).toEqual({ ok: true });
+    expect(getSettings().lastBackupAt).toBe(now.getTime());
+  });
+
+  it('stores it too when the file is downloaded instead', async () => {
+    vi.stubGlobal('navigator', {});
+    const click = vi.fn();
+    vi.stubGlobal('document', { createElement: () => ({ click }) });
+    expect(await offerBackup(now)).toEqual({ ok: true });
+    expect(click).toHaveBeenCalledOnce();
+    expect(getSettings().lastBackupAt).toBe(now.getTime());
+  });
+
+  it('stores nothing when the share sheet is closed', async () => {
+    shareSheet(async () => {
+      throw new DOMException('closed', 'AbortError');
+    });
+    expect(await offerBackup(now)).toEqual({ ok: false, aborted: true });
+    expect(getSettings().lastBackupAt).toBeNull();
+    expect(store.has('press.settings.v1')).toBe(false);
+  });
+
+  it('stores nothing when the share fails', async () => {
+    shareSheet(async () => {
+      throw new Error('share target refused');
+    });
+    expect(await offerBackup(now)).toEqual({ ok: false, aborted: false });
+    expect(getSettings().lastBackupAt).toBeNull();
+  });
+
+  it('still reports success when the settings write is refused', async () => {
+    shareSheet(async () => {});
+    const setItem = vi.spyOn(localStorage, 'setItem').mockImplementation(() => {
+      throw new DOMException('quota', 'QuotaExceededError');
+    });
+    try {
+      expect(await offerBackup(now)).toEqual({ ok: true });
+    } finally {
+      setItem.mockRestore();
+    }
+  });
+});
+
+describe('a restore that covers everything on the device counts as a backup', () => {
+  beforeEach(() => store.clear());
+
+  it('sets lastBackupAt after a restore into an empty device', () => {
+    const before = Date.now();
+    const r = restoreBackup(text(buildBackup([round('a', 5), round('b', 6)], [], '1.0.0')));
+    expect(r.ok).toBe(true);
+    expect(getSettings().lastBackupAt).toBeGreaterThanOrEqual(before);
+  });
+
+  it('sets it when the device already held the same rounds, no newer', () => {
+    store.set('press.rounds.v1', text([round('a', 5)]));
+    restoreBackup(text(buildBackup([round('a', 5), round('b', 6)], [], '1.0.0')));
+    expect(getSettings().lastBackupAt).not.toBeNull();
+  });
+
+  it('does not when the device holds a round the file lacks', () => {
+    store.set('press.rounds.v1', text([round('mine', 5)]));
+    const r = restoreBackup(text(buildBackup([round('b', 6)], [], '1.0.0')));
+    expect(r.ok).toBe(true);
+    expect(getSettings().lastBackupAt).toBeNull();
+  });
+
+  it("does not when the device's copy is newer than the file's", () => {
+    store.set('press.rounds.v1', text([round('a', 9)]));
+    const r = restoreBackup(text(buildBackup([round('a', 5)], [], '1.0.0')));
+    expect(r.ok).toBe(true);
+    expect(getSettings().lastBackupAt).toBeNull();
+  });
+
+  it('does not for a file with no rounds in it', () => {
+    restoreBackup(text(buildBackup([], [course('c1', 'Pebble')], '1.0.0')));
+    expect(getSettings().lastBackupAt).toBeNull();
+  });
+
+  it('does not when the restore fails', () => {
+    restoreBackup('nope');
+    expect(getSettings().lastBackupAt).toBeNull();
+  });
+
+  it('still restores a format 1 file with no people and no appVersion', () => {
+    const r = restoreBackup(
+      text({ app: 'press', format: 1, exportedAt: '2025-01-01T00:00:00Z', rounds: [round('a', 1)], courses: [] })
+    );
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.rounds.added).toBe(1);
+    expect(JSON.parse(store.get('press.rounds.v1') as string)).toHaveLength(1);
+  });
+});
+
+describe('restoreFromFile', () => {
+  beforeEach(() => store.clear());
+
+  it("says the file couldn't be read when reading it fails", async () => {
+    const r = await restoreFromFile({ text: () => Promise.reject(new Error('gone')) });
+    expect(r).toEqual({ ok: false, error: "That file couldn't be read." });
+    expect(store.has('press.rounds.v1')).toBe(false);
+  });
+
+  it('restores a readable file exactly as restoreBackup does', async () => {
+    const body = text(buildBackup([round('a', 1)], [course('c1', 'Pebble')], '1.0.0'));
+    const r = await restoreFromFile({ text: async () => body });
+    expect(r).toEqual({
+      ok: true,
+      rounds: { added: 1, updated: 0, kept: 0 },
+      courses: { added: 1, updated: 0, kept: 0 },
+      dropped: 0,
+      people: 0,
+    });
+    expect(JSON.parse(store.get('press.rounds.v1') as string)).toHaveLength(1);
+  });
+
+  it('passes a parse failure through', async () => {
+    const r = await restoreFromFile({ text: async () => 'nope' });
+    expect(r).toEqual({ ok: false, error: "That file isn't valid JSON." });
+  });
+});
+
+describe('describeRestore', () => {
+  const m = (added = 0, updated = 0, kept = 0) => ({ added, updated, kept });
+  const ok = (over: Partial<Extract<Parameters<typeof describeRestore>[0], { ok: true }>> = {}) => ({
+    ok: true as const,
+    rounds: m(),
+    courses: m(),
+    dropped: 0,
+    people: 0,
+    ...over,
+  });
+
+  it('lists what was added and updated', () => {
+    expect(describeRestore(ok({ rounds: m(3, 1), courses: m(2) }))).toBe(
+      'Added 3 rounds, updated 1 round, added 2 courses.'
+    );
+    expect(describeRestore(ok({ rounds: m(1) }))).toBe('Added 1 round.');
+  });
+
+  it('counts what was already up to date', () => {
+    expect(describeRestore(ok({ rounds: m(1, 0, 2), courses: m(0, 0, 1) }))).toBe(
+      'Added 1 round · 3 items already up to date.'
+    );
+    expect(describeRestore(ok({ rounds: m(0, 0, 1) }))).toBe(
+      'Nothing new to add · 1 item already up to date.'
+    );
+  });
+
+  it("says when entries in the file couldn't be read", () => {
+    expect(describeRestore(ok({ dropped: 1 }))).toBe(
+      "Nothing new to add · 1 entry in the file couldn't be read."
+    );
+    expect(describeRestore(ok({ rounds: m(1), dropped: 2 }))).toBe(
+      "Added 1 round · 2 entries in the file couldn't be read."
+    );
+  });
+
+  it('mentions merged names it matched', () => {
+    expect(describeRestore(ok({ people: 1 }))).toBe('Matched 1 merged name.');
+    expect(describeRestore(ok({ rounds: m(2), people: 3 }))).toBe(
+      'Added 2 rounds, matched 3 merged names.'
+    );
   });
 });
