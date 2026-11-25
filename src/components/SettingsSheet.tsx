@@ -3,7 +3,8 @@ import type { Theme } from '../storage';
 import type { Round } from '../types';
 import { getSettings, saveSettings, SETTINGS_KEY } from '../storage';
 import { notSavedReason } from '../notSaved';
-import { describePersistence } from '../persistence';
+import { describeStorage, persistenceStatus } from '../persistence';
+import { storageRisk } from '../platform';
 import { applyTheme } from '../theme';
 import { Sheet } from './Sheet';
 import { FeedbackForm } from './FeedbackForm';
@@ -324,8 +325,11 @@ export function SettingsSheet({
             </div>
             <div className="about-line">Build {__BUILD_STAMP__}</div>
             <div className="about-line">Layout {layout}</div>
-            {/* Whether the browser agreed to keep the storage — see persistence.ts. */}
-            {!isNative() && <div className="about-line">{describePersistence()}</div>}
+            {/* Whether the browser agreed to keep the storage, and whether that
+                is enough where Trunk is running — see persistence.ts. */}
+            {!isNative() && (
+              <div className="about-line">{describeStorage(persistenceStatus(), storageRisk())}</div>
+            )}
             <div className="about-line">Created by Jesse Morrison</div>
             <div className="about-line">PolyForm Noncommercial License 1.0.0</div>
             {/* A static page, so it opens even when the app cannot: what is

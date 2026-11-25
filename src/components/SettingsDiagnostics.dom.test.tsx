@@ -2,6 +2,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup } from '@testing-library/react';
 import { SettingsSheet } from './SettingsSheet';
+import * as platform from '../platform';
+import * as persistence from '../persistence';
 
 /**
  * The two lines at the bottom of Settings that exist for bug reports.
@@ -141,5 +143,25 @@ describe('a row whose box hides its overflow', () => {
     Object.defineProperty(row, 'clientWidth', { value: 377, configurable: true });
     render(<SettingsSheet onClose={() => {}} screen="play" />);
     expect(line('Layout')).toBe('Layout 393 · 393 · 393 · +30');
+  });
+});
+
+describe('the storage line', () => {
+  it('names the seven-day rule in a Safari tab, whatever persist() said', () => {
+    // A granted persist() does not lift WebKit's seven-day deletion in a tab,
+    // so "Storage protected" there would be false reassurance.
+    stage(0);
+    vi.spyOn(platform, 'storageRisk').mockReturnValue('evicting');
+    vi.spyOn(persistence, 'persistenceStatus').mockReturnValue('persisted');
+    render(<SettingsSheet onClose={() => {}} screen="play" />);
+    expect(line('Storage')).toBe('Storage: browser tab — cleared after 7 days unused');
+  });
+
+  it('still says "Storage protected" in an installed app that was granted it', () => {
+    stage(0);
+    vi.spyOn(platform, 'storageRisk').mockReturnValue('installed');
+    vi.spyOn(persistence, 'persistenceStatus').mockReturnValue('persisted');
+    render(<SettingsSheet onClose={() => {}} screen="play" />);
+    expect(line('Storage')).toBe('Storage protected');
   });
 });
