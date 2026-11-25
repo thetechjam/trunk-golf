@@ -154,6 +154,14 @@ export function SettingsSheet({
   // While the deletes are in flight. On native they only answer later, and a
   // second tap in that gap would start a second wipe over the first.
   const [wiping, setWiping] = useState(false);
+  // The wipe is the last thing in a sheet that scrolls, so the armed copy and
+  // its two buttons grow downward, out of sight below the sheet's edge. Bring
+  // them into view once they are in the DOM. Only on arming: standing down
+  // shrinks the section, and there is nothing to chase.
+  const eraseSection = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (erasing) eraseSection.current?.scrollIntoView({ block: 'nearest' });
+  }, [erasing]);
   const erase = async () => {
     if (wiping) return;
     setWiping(true);
@@ -331,7 +339,7 @@ export function SettingsSheet({
               the version block and behind its own rule, so it sits beside
               nothing that gets tapped in passing — and above all not beside
               the one row that asks for something. */}
-          <div className="set-erase set-danger">
+          <div className="set-erase set-danger" ref={eraseSection}>
             {eraseFailed ? (
               <>
                 <p className="set-erase-copy" role="alert">

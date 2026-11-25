@@ -54,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   good. Phones that already had a finished round are not asked, and a phone
   that cannot store the choice still starts.
 - **Erase everything**, at the bottom of Settings. The privacy page said
-  there was no single wipe button in Trunk yet; now there is. Two taps, as deleting from Rounds → Select: the first says what goes —
+  there was no single wipe button in Trunk yet; now there is. Two taps, as
+  deleting from Rounds → Select: the first says what goes —
   every round, saved course, player name, feedback waiting to send and
   setting — and the second removes all six things Trunk stores and relaunches
   the app as on first open. The browser's own clear-site-data route still

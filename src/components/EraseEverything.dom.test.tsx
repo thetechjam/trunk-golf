@@ -118,6 +118,30 @@ describe('where Erase everything sits', () => {
     expect(section.nextElementSibling).toBeNull();
     expect(follows(about(), confirmButton())).toBe(true);
   });
+
+  it('scrolls the armed copy and buttons into view, and only on arming', () => {
+    // The section is at the bottom of a scrolling sheet and grows downward
+    // when armed; without this the two buttons land below the sheet's edge.
+    const scrolled: Element[] = [];
+    const spy = vi
+      .spyOn(Element.prototype, 'scrollIntoView')
+      .mockImplementation(function (this: Element) {
+        scrolled.push(this);
+      });
+    render(<SettingsSheet onClose={() => {}} screen="home" />);
+    const section = armButton().closest('.set-erase')!;
+    expect(spy).not.toHaveBeenCalled();
+
+    fireEvent.click(armButton());
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
+    expect(scrolled).toEqual([section]);
+    // By the time it scrolls, the buttons it is scrolling to are there.
+    expect(section.contains(confirmButton())).toBe(true);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('Erase everything when a key will not go', () => {
