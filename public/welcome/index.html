@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  The landing page at trunk.golf/welcome/. A plain static file beside the app,
+  not part of it: no script at all (the site CSP is script-src 'self', so an
+  inline one would be blocked anyway), and the service worker neither
+  precaches it nor answers its URL with the app shell (vite.config.ts).
+  Tested by src/welcomePage.test.ts.
+-->
+<title>Trunk — Golf Side Games</title>
+<meta name="description" content="Trunk referees your group's golf side games. One phone takes everyone's score, the money updates every hole, and it works out who pays who.">
+<meta name="theme-color" content="#14694e">
+<link rel="canonical" href="https://trunk.golf/welcome/">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preload" href="/fonts/oswald-latin.woff2" as="font" type="font/woff2" crossorigin>
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Trunk">
+<meta property="og:url" content="https://trunk.golf/welcome/">
+<meta property="og:title" content="Trunk — Golf Side Games">
+<meta property="og:description" content="Trunk referees your group's golf side games. One phone takes everyone's score, the money updates every hole, and it works out who pays who.">
+<meta property="og:image" content="https://trunk.golf/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Trunk — golf side games. Settle it at the trunk.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Trunk — Golf Side Games">
+<meta name="twitter:description" content="Trunk referees your group's golf side games. One phone takes everyone's score, the money updates every hole, and it works out who pays who.">
+<meta name="twitter:image" content="https://trunk.golf/og.png">
+<style>
+/* The app's own font file, the same one index.html preloads. */
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  src: url("/fonts/oswald-latin.woff2") format("woff2");
+  font-weight: 500 600;
+  font-display: swap;
+}
+:root {
+  --green-900: #0b3d2e;
+  --green-700: #14694e;
+  --green-600: #1a7d5c;
+  --fairway: #2fbf86;
+  --cream: #f4f7f2;
+  --paper: #edf2ec;
+  --gold: #e7b53c;
+  --gold-deep: #c49218;
+  --over: #d2483b;
+  --ink: #12261f;
+  --ink-soft: #4b6058;
+  --line: #d6e0d8;
+  --display: "Oswald", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --wrap: 1120px;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+body { margin: 0; overflow-x: clip; font-family: var(--body); color: var(--ink); background: var(--cream); line-height: 1.55; font-size: 17px; }
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+.wrap { width: min(var(--wrap), 100% - 48px); margin-inline: auto; }
+.display { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; line-height: 1.02; margin: 0; }
+.eyebrow { font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.22em; font-size: 14px; margin: 0 0 14px; }
+.felt {
+  color: var(--cream);
+  background:
+    radial-gradient(1200px 520px at 78% 8%, rgba(47,191,134,0.16), transparent 62%),
+    linear-gradient(160deg, var(--green-700) 0%, var(--green-900) 72%);
+  position: relative;
+  overflow: hidden;
+}
+.contours { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.11; pointer-events: none; }
+.felt > .wrap { position: relative; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 54px; padding: 0 26px; border-radius: 14px; font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: 17px; text-decoration: none; white-space: nowrap; }
+.btn-gold { background: linear-gradient(180deg, #f2cf6b, var(--gold) 55%, #d8a42c); color: #2a2206; box-shadow: 0 1px 0 rgba(255,255,255,0.5) inset, 0 10px 24px rgba(0,0,0,0.28); }
+.btn-ghost { border: 1.5px solid rgba(244,247,242,0.42); color: var(--cream); }
+.btn-green { background: var(--green-600); color: #fff; box-shadow: 0 8px 20px rgba(11,61,46,0.22); }
+
+/* Nav */
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+.lockup { display: inline-flex; align-items: flex-end; gap: 10px; text-decoration: none; font-family: var(--display); font-weight: 600; font-size: 30px; letter-spacing: 0.06em; line-height: 1; text-transform: uppercase; color: var(--cream); text-shadow: 0 2px 8px rgba(0,0,0,0.28); }
+.lockup img { height: 38px; width: auto; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); }
+.nav-links { display: flex; align-items: center; gap: 30px; font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.14em; font-size: 14px; }
+/* Small cream text on the felt is at 0.92 here and in the hero, not lower:
+   the fairway glow lifts the felt under it (most on a phone, where the glow
+   covers the whole hero), and 0.92 is what keeps 4.5:1 at the lightest spot. */
+.nav-links a { text-decoration: none; opacity: 0.92; }
+.nav-links .btn { min-height: 44px; padding: 0 18px; font-size: 14px; opacity: 1; }
+
+/* Hero */
+.hero { display: grid; grid-template-columns: 1.02fr 0.98fr; gap: 40px; align-items: center; padding: 34px 0 0; }
+.hero-copy { padding-bottom: 76px; }
+.hero h1 { font-size: clamp(54px, 7.4vw, 104px); color: var(--cream); text-shadow: 0 3px 0 rgba(0,0,0,0.16), 0 14px 30px rgba(0,0,0,0.24); }
+.hero h1 em { font-style: normal; color: var(--gold); }
+.hero .eyebrow { color: rgba(244,247,242,0.92); }
+.lede { font-size: 20px; line-height: 1.5; max-width: 33em; color: rgba(244,247,242,0.92); margin: 24px 0 32px; }
+.cta-row { display: flex; flex-wrap: wrap; gap: 14px; }
+.fine { margin: 22px 0 0; font-size: 15px; color: rgba(244,247,242,0.92); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.fine span::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); margin-right: 9px; transform: translateY(-2px); }
+
+.phones { position: relative; height: 640px; align-self: end; }
+.phone { position: absolute; width: 292px; border-radius: 44px; padding: 10px; background: linear-gradient(160deg, #24362f, #0a1713); box-shadow: 0 0 0 1.5px rgba(255,255,255,0.14) inset, 0 34px 60px rgba(0,0,0,0.42); }
+.phone img { border-radius: 35px; width: 100%; }
+.phone-back { right: 0; top: 54px; transform: rotate(5deg); opacity: 0.96; }
+.phone-front { left: 4%; top: 0; transform: rotate(-4deg); z-index: 2; }
+
+/* Proof strip */
+.proof { background: var(--green-900); color: var(--cream); border-top: 1px solid rgba(231,181,60,0.4); }
+.proof ul { list-style: none; margin: 0; padding: 22px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+.proof li { display: flex; align-items: baseline; gap: 12px; font-size: 15px; color: rgba(244,247,242,0.8); }
+.proof b { font-family: var(--display); font-weight: 600; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; line-height: 1; }
+
+/* Sections */
+section { padding: 96px 0; }
+.section-head { max-width: 40em; margin-bottom: 44px; }
+.section-head .eyebrow { color: var(--green-700); }
+h2.display { font-size: clamp(38px, 4.6vw, 60px); color: var(--ink); }
+.section-head p { font-size: 19px; color: var(--ink-soft); margin: 16px 0 0; }
+
+/* Games */
+.games { background: var(--paper); }
+.game-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.game { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px 20px 22px; }
+.game h3 { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; font-size: 22px; margin: 0 0 6px; line-height: 1.1; }
+.game p { margin: 0; font-size: 15px; line-height: 1.45; color: var(--ink-soft); }
+.game.big { grid-column: span 2; background: var(--green-900); border-color: var(--green-900); color: var(--cream); display: flex; flex-direction: column; justify-content: space-between; min-height: 156px; }
+.game.big h3 { font-size: 34px; color: var(--gold); }
+.game.big p { color: rgba(244,247,242,0.84); font-size: 16px; max-width: 26em; }
+.tag { align-self: flex-start; font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.16em; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid rgba(231,181,60,0.6); color: var(--gold); margin-bottom: 18px; }
+.junk { margin-top: 14px; background: #fff; border: 1px dashed #b9c9be; border-radius: 18px; padding: 18px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.junk strong { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; font-size: 22px; margin-right: 6px; }
+.chip { font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; font-size: 14px; padding: 6px 12px; border-radius: 999px; background: #fbf1d6; color: #6c5207; }
+.junk span.note { color: var(--ink-soft); font-size: 15px; margin-left: auto; }
+
+/* Steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; counter-reset: step; }
+.step { position: relative; padding-top: 22px; border-top: 3px solid var(--green-700); }
+.step::before { counter-increment: step; content: "0" counter(step); font-family: var(--display); font-weight: 600; font-size: 56px; line-height: 1; color: var(--green-700); opacity: 0.22; display: block; margin-bottom: 10px; }
+.step h3 { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 26px; margin: 0 0 8px; }
+.step p { margin: 0; color: var(--ink-soft); }
+
+/* Feature rows */
+.feature { display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center; }
+.feature + .feature { margin-top: 96px; }
+.feature.flip .shot { order: 2; }
+.shot { display: flex; justify-content: center; }
+.shot .phone { position: static; width: 300px; transform: none; }
+.shot .card { width: min(400px, 100%); border-radius: 14px; box-shadow: 0 30px 60px rgba(11,61,46,0.3); transform: rotate(-1.5deg); }
+.feature h2 { font-size: clamp(34px, 4vw, 52px); }
+.feature p { font-size: 18px; color: var(--ink-soft); margin: 16px 0 0; max-width: 30em; }
+.ticks { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 10px; }
+.ticks li { padding-left: 30px; position: relative; }
+.ticks li::before { content: ""; position: absolute; left: 0; top: 7px; width: 16px; height: 9px; border-left: 3px solid var(--green-700); border-bottom: 3px solid var(--green-700); transform: rotate(-45deg); }
+.money { font-family: var(--display); font-weight: 600; letter-spacing: 0.03em; }
+/* The app's text-safe red (--over-strong); --over itself is 4.1:1 on cream. */
+.up { color: #177a56; } .down { color: #bd392c; }
+.ledger { margin-top: 24px; border: 1px solid var(--line); border-radius: 16px; background: #fff; max-width: 420px; }
+.ledger div { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; font-size: 17px; }
+.ledger div + div { border-top: 1px solid var(--line); }
+.ledger b { font-weight: 600; color: var(--over); font-size: 20px; }
+
+/* Privacy */
+.privacy { background: var(--paper); }
+.privacy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.pcard { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 26px 24px; }
+.pcard h3 { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; font-size: 24px; margin: 0 0 8px; }
+.pcard p { margin: 0; color: var(--ink-soft); font-size: 16px; }
+.caveat { margin-top: 16px; font-size: 15px; color: var(--ink-soft); padding: 16px 20px; border-left: 3px solid var(--gold); background: #fff; border-radius: 0 12px 12px 0; }
+
+/* Awards */
+.awards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 8px; }
+.award { border-radius: 16px; padding: 20px; background: var(--green-900); color: var(--cream); }
+.award h3 { font-family: var(--display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: 18px; color: var(--gold); margin: 0 0 6px; }
+.award p { margin: 0; font-family: var(--display); font-weight: 500; font-size: 19px; line-height: 1.25; }
+.award small { display: block; margin-top: 10px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 13px; color: rgba(244,247,242,0.62); }
+
+/* Final CTA */
+.final { text-align: center; padding: 104px 0 96px; }
+.final img.mark { width: 150px; margin: 0 auto 26px; filter: drop-shadow(0 18px 22px rgba(0,0,0,0.36)); }
+.final h2 { font-size: clamp(48px, 7vw, 92px); color: var(--cream); text-shadow: 0 3px 0 rgba(0,0,0,0.16), 0 14px 30px rgba(0,0,0,0.24); }
+.final p { font-size: 20px; color: rgba(244,247,242,0.86); margin: 18px auto 32px; max-width: 30em; }
+.final .cta-row { justify-content: center; }
+
+footer { background: #072a20; color: rgba(244,247,242,0.66); font-size: 14px; padding: 28px 0 34px; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 28px; align-items: center; }
+footer .sign { font-family: var(--display); font-weight: 500; text-transform: uppercase; letter-spacing: 0.2em; color: var(--gold); }
+footer nav { display: flex; flex-wrap: wrap; gap: 20px; }
+footer a { text-decoration: none; }
+footer .credit { flex-basis: 100%; font-size: 12.5px; color: rgba(244,247,242,0.55); }
+
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; padding-top: 12px; }
+  .hero-copy { padding-bottom: 8px; }
+  .phones { height: 560px; max-width: 520px; width: 100%; margin: 26px auto 0; }
+  .phone { width: 250px; }
+  .phone-front { left: 2%; }
+  .game-grid { grid-template-columns: repeat(2, 1fr); }
+  .proof ul { grid-template-columns: repeat(2, 1fr); }
+  .steps, .privacy-grid { grid-template-columns: 1fr; }
+  .awards { grid-template-columns: repeat(2, 1fr); }
+  .feature { grid-template-columns: 1fr; gap: 36px; }
+  .feature.flip .shot { order: 0; }
+  .feature + .feature { margin-top: 72px; }
+  section { padding: 72px 0; }
+  .nav-links a:not(.btn) { display: none; }
+}
+@media (max-width: 560px) {
+  body { font-size: 16px; }
+  .wrap { width: calc(100% - 36px); }
+  .lede { font-size: 18px; }
+  .btn { width: 100%; }
+  .nav-links .btn { width: auto; }
+  .phones { height: 470px; }
+  .phone { width: 208px; border-radius: 34px; padding: 7px; }
+  .phone img { border-radius: 27px; }
+  .phone-back { top: 40px; }
+  .game-grid { grid-template-columns: 1fr; }
+  .game.big { grid-column: auto; min-height: 0; }
+  .junk span.note { margin-left: 0; flex-basis: 100%; }
+  .awards { grid-template-columns: 1fr; }
+  .shot .phone { width: 250px; }
+  .shot .card { width: 90%; transform: rotate(-1deg); }
+  section { padding: 60px 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="felt">
+  <svg class="contours" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" fill="none" stroke="#f4f7f2" stroke-width="1.4">
+    <path d="M-40 640c120-90 260-110 380-60s210 150 360 130 230-170 400-190 300 80 420 40"/>
+    <path d="M-40 700c130-80 250-90 370-40s220 140 370 120 240-160 410-180 290 70 410 30"/>
+    <path d="M-40 760c140-70 250-70 360-20s230 130 380 110 250-150 420-170 280 60 400 20"/>
+    <ellipse cx="1180" cy="210" rx="250" ry="150"/><ellipse cx="1180" cy="210" rx="190" ry="108"/><ellipse cx="1180" cy="210" rx="130" ry="68"/><ellipse cx="1180" cy="210" rx="70" ry="32"/>
+    <ellipse cx="210" cy="150" rx="210" ry="120"/><ellipse cx="210" cy="150" rx="150" ry="80"/><ellipse cx="210" cy="150" rx="90" ry="42"/>
+  </svg>
+  <div class="wrap">
+    <div class="nav">
+      <a class="lockup" href="/"><img src="/welcome/mark.webp" width="420" height="423" alt="">Trunk</a>
+      <nav class="nav-links" aria-label="Page">
+        <a href="#games">Games</a>
+        <a href="#how">How it works</a>
+        <a href="#privacy">Privacy</a>
+        <a class="btn btn-ghost" href="/">Open Trunk</a>
+      </nav>
+    </div>
+
+    <div class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">Golf side games</p>
+        <h1 class="display">Settle it<br>at the <em>trunk.</em></h1>
+        <p class="lede">Trunk referees your group's money games. One phone takes everyone's score, the money moves on every hole, and by the 18th green it has already worked out who pays who.</p>
+        <div class="cta-row">
+          <a class="btn btn-gold" href="/">Start a round &rarr;</a>
+          <a class="btn btn-ghost" href="https://youtu.be/bUL6qcGF6XI" rel="noopener">Watch it in 80 seconds</a>
+        </div>
+        <p class="fine"><span>Free</span><span>No account</span><span>No app store</span><span>Works with no signal</span></p>
+      </div>
+      <div class="phones" aria-hidden="true">
+        <div class="phone phone-back"><img src="/welcome/board.webp" width="520" height="1125" alt=""></div>
+        <div class="phone phone-front"><img src="/welcome/hole.webp" width="520" height="1125" alt=""></div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="proof">
+  <div class="wrap">
+    <ul>
+      <li><b>1</b> phone scores the whole group</li>
+      <li><b>10</b> games, plus junk on the side</li>
+      <li><b>0</b> accounts, sign-ups or installs</li>
+      <li><b>1,900+</b> automated tests behind it</li>
+    </ul>
+  </div>
+</div>
+
+<section class="games" id="games">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">The games</p>
+      <h2 class="display">Every hole's a bet.</h2>
+      <p>Pick one or stack three. Set a stake on each and Trunk keeps every one of them straight at the same time, gross or net.</p>
+    </div>
+    <div class="game-grid">
+      <article class="game big">
+        <span class="tag">The classic</span>
+        <div><h3>Nassau</h3><p>Front, back and total. 1v1 or 2v2, with presses when somebody's down and wants out.</p></div>
+      </article>
+      <article class="game"><h3>Skins</h3><p>Win the hole outright or it carries. Gross or net.</p></article>
+      <article class="game"><h3>Wolf</h3><p>Pick a partner, go lone, or call it blind off the tee.</p></article>
+      <article class="game"><h3>Vegas</h3><p>2v2, scores written side by side. Optional birdie flip.</p></article>
+      <article class="game"><h3>Match play</h3><p>1v1, or 2v2 best-ball.</p></article>
+      <article class="game"><h3>Stableford</h3><p>Points per hole. Blow-ups cost you one hole, not the round.</p></article>
+      <article class="game"><h3>Quota</h3><p>Beat your own points target, set by your handicap.</p></article>
+      <article class="game"><h3>Stroke play</h3><p>Low score takes it. Gross or net.</p></article>
+      <article class="game"><h3>Scramble</h3><p>Teams of two to four, one ball, a tee-shot minimum and a shotgun start.</p></article>
+      <article class="game big" style="background:#fff;border-color:var(--line);color:var(--ink)">
+        <span class="tag" style="color:var(--green-700);border-color:var(--green-700)">Thursday nights</span>
+        <div><h3 style="color:var(--green-700)">Golf League</h3><p style="color:var(--ink-soft)">A and B singles plus a combined team match, scored in league points across the season.</p></div>
+      </article>
+    </div>
+    <div class="junk">
+      <strong>Junk</strong>
+      <span class="chip">Greenie</span><span class="chip">Sandie</span><span class="chip">Barkie</span><span class="chip">Polie</span><span class="chip">Arnie</span><span class="chip">Chip-in</span>
+      <span class="note">Claim it on the hole. It's on the bill.</span>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2 class="display">One phone. One tap each.</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><h3>Set the game</h3><p>Add the group and their handicaps. Search for the course, load one you saved, or scan the printed card for pars and stroke indexes.</p></div>
+      <div class="step"><h3>Tap the scores</h3><p>One scorekeeper, one tap per player. The money ticker at the top moves the moment a hole is in.</p></div>
+      <div class="step"><h3>Settle up</h3><p>Trunk boils every bet down to the fewest payments that square the group. Send the board to the group chat.</p></div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+
+    <div class="feature">
+      <div class="shot"><div class="phone"><img src="/welcome/board.webp" width="520" height="1125" loading="lazy" alt="The Board: running money per player, with Nassau, Skins and Junk broken out underneath"></div></div>
+      <div>
+        <p class="eyebrow" style="color:var(--green-700)">The Board</p>
+        <h2 class="display">The money, live.</h2>
+        <p>Nobody has to do sums on the 14th tee. The Board shows who's up, who's down and which game did it, after every hole.</p>
+        <ul class="ticks">
+          <li>A running total per player: <span class="money up">+$71</span> <span class="money down">&minus;$61</span></li>
+          <li>Each game broken out, so the argument has a number in it</li>
+          <li>Stakes editable mid-round, when the back nine needs more on it</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature flip">
+      <div class="shot"><img class="card" src="/welcome/scoreboard.webp" width="640" height="1458" loading="lazy" alt="The shareable scoreboard image: settlement, Nassau, Skins, Junk and awards on dark green felt"></div>
+      <div>
+        <p class="eyebrow" style="color:var(--green-700)">Settling up</p>
+        <h2 class="display">Keep your friends honest.</h2>
+        <p>Three games between four players leaves money owed in every direction. Trunk nets it into the fewest payments that settle everyone.</p>
+        <div class="ledger" aria-label="Example settlement">
+          <div><span>Al pays Di</span><b>$108</b></div>
+          <div><span>Bo pays Di</span><b>$24</b></div>
+          <div><span>Cy pays Di</span><b>$24</b></div>
+        </div>
+        <ul class="ticks">
+          <li>Share it as a scoreboard image, a scorecard, or plain text</li>
+          <li>Hand the round to another phone by link or QR code</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="feature">
+      <div class="shot"><div class="phone"><img src="/welcome/setup.webp" width="520" height="1125" loading="lazy" alt="New Round: four players with handicap indexes and a course picked from search"></div></div>
+      <div>
+        <p class="eyebrow" style="color:var(--green-700)">Handicaps</p>
+        <h2 class="display">Net, done by the book.</h2>
+        <p>Enter a Handicap Index and Trunk works out what each player gets on this course, then drops the strokes on the right holes.</p>
+        <ul class="ticks">
+          <li>Strokes fall by stroke index, with a second on the hardest holes when the handicap runs past eighteen</li>
+          <li>Match play and Nassau follow the Rules of Handicapping: low man plays off scratch</li>
+          <li>Four-ball allowances cut to 90%, the way the book says</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Awards</p>
+      <h2 class="display">Somebody is the ATM.</h2>
+      <p>Every finished round hands out a few superlatives, each with the number behind it. They go on the shared scoreboard. Nobody can say they weren't told.</p>
+    </div>
+    <div class="awards">
+      <div class="award"><h3>The ATM</h3><p>Al funded the round</p><small>&minus;$108</small></div>
+      <div class="award"><h3>Sandbagger</h3><p>Di is playing off the wrong handicap</p><small>69 net &middot; 3 under par</small></div>
+      <div class="award"><h3>Skin Thief</h3><p>Di walked off with the pot</p><small>11 skins</small></div>
+      <div class="award"><h3>The Magpie</h3><p>Al picked up everything loose</p><small>a greenie &middot; a sandie &hellip;</small></div>
+    </div>
+  </div>
+</section>
+
+<section class="privacy" id="privacy">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Privacy</p>
+      <h2 class="display">Your round stays on your phone.</h2>
+    </div>
+    <div class="privacy-grid">
+      <div class="pcard"><h3>No account</h3><p>No sign-up, no email, no password. Open it and start a round.</p></div>
+      <div class="pcard"><h3>No signal needed</h3><p>It runs in your browser and keeps working when the back nine has no bars.</p></div>
+      <div class="pcard"><h3>Stays on the device</h3><p>Rounds live on the device. Even a shared round travels inside the link itself.</p></div>
+    </div>
+    <p class="caveat">One exception, and it's optional: <strong>Scan the card</strong> sends a photo of the course's printed scorecard to be read. <a href="/privacy.html">The privacy page</a> says exactly what leaves the phone and when.</p>
+  </div>
+</section>
+
+<section class="felt final">
+  <svg class="contours" viewBox="0 0 1440 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true" fill="none" stroke="#f4f7f2" stroke-width="1.4">
+    <ellipse cx="720" cy="300" rx="640" ry="250"/><ellipse cx="720" cy="300" rx="520" ry="196"/><ellipse cx="720" cy="300" rx="400" ry="142"/><ellipse cx="720" cy="300" rx="280" ry="92"/>
+  </svg>
+  <div class="wrap">
+    <img class="mark" src="/welcome/mark.webp" width="420" height="423" loading="lazy" alt="">
+    <h2 class="display">Nobody plays for free.</h2>
+    <p>Open it on the first tee. Add it to your home screen and it behaves like an app.</p>
+    <div class="cta-row">
+      <a class="btn btn-gold" href="/">Open Trunk &rarr;</a>
+      <a class="btn btn-ghost" href="https://youtu.be/bUL6qcGF6XI" rel="noopener">Watch it in 80 seconds</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="sign">Scored with Trunk &middot; trunk.golf</span>
+    <nav aria-label="Footer">
+      <a href="/">Open the app</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="https://github.com/thetechjam/trunk-golf" rel="noopener">Source</a>
+    </nav>
+    <span class="credit">Course data &copy; OpenStreetMap contributors (ODbL 1.0) via OpenGolfAPI.</span>
+  </div>
+</footer>
+
+</body>
+</html>

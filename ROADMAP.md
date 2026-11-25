@@ -41,6 +41,11 @@ captures what's built, what's deferred, and how to expand without a rewrite.
   stroke indexes on the New Round and Golf League screens. Front-nine stroke
   indexes are re-ranked 1–9 for League. Needs signal at setup; Favorite Courses
   is the offline fallback.
+- **Scan the card** (`netlify/functions/scan-card.mts`, `netlify/lib/scanCard`):
+  photograph a course's printed scorecard on New Round and a vision model reads
+  par and stroke index per hole. The app's one piece of server code, at
+  `/api/scan-card`; it is stateless and stores and logs nothing of the photo or
+  the reading.
 - **PWA**: installable, offline, splash screen, install prompt.
 - **Backup / restore** (`src/backup.ts`): writes every round and favorite course
   to one JSON file and reads one back, from the Settings sheet. A restore merges
@@ -117,8 +122,10 @@ Everything is in **localStorage**, per browser, per device:
 - `press.courses.v1` — favorite courses
 
 Nothing is *synced* between devices, and nothing is stored anywhere but the
-browser that wrote it. This is by design (no backend, no cost, works with zero
-signal on the course). A round can be handed to another phone as a snapshot —
+browser that wrote it. This is by design (no database, no cost, works with zero
+signal on the course). Scan the card sends a photo to one stateless function and
+keeps nothing; rounds and courses never leave the browser. A round can be
+handed to another phone as a snapshot —
 by backup file, or by the share link, which carries it in the URL fragment
 rather than through a server — but the two copies then go their own ways.
 Keeping them in step is what accounts and sync are for, below.
@@ -167,9 +174,13 @@ signal, syncing when a connection returns.
 ## Monetization (research brief)
 
 _Added 2026-07-01. Research pass on how Trunk could realistically make money **if
-it gains traction**, and what each path actually costs to build. Trunk is 100%
-client-side today (no backend, no accounts, no DB), so the load-bearing question
+it gains traction**, and what each path actually costs to build. Trunk was 100%
+client-side then (no backend, no accounts, no DB), so the load-bearing question
 for every model below is: **does it force a backend?**_
+
+_Note 2026-11-21: one stateless Netlify Function now backs Scan the card. It
+stores nothing and changes nothing here: still no accounts, no database, no
+sync._
 
 **License angle first:** Trunk ships under [PolyForm Noncommercial 1.0.0](./LICENSE),
 which reserves all commercial rights to the sole copyright holder. Nothing here

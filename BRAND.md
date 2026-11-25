@@ -25,8 +25,9 @@ Descriptor: **"Golf side games"**. Used on the splash, in page titles and in
 the manifest.
 
 Voice: plain, dry, buddies-trip money games. Never "simply", never "seamless".
-"Settle it on 18." is retired. Still parked: "Nobody plays for free." ·
-"Every hole's a bet." · "Keep your friends honest."
+"Settle it on 18." is retired. "Nobody plays for free." · "Every hole's a bet."
+· "Keep your friends honest." are in use as section headlines on the landing
+page at `/welcome/` (`public/welcome/index.html`).
 
 ## The mark: "Open Trunk"
 

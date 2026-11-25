@@ -78,7 +78,15 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // A build artifact for Netlify's form scanner, and the link-unfurl card,
         // which only crawlers fetch: neither is an app asset.
-        globIgnores: ['**/__forms.html', '**/og.png'],
+        //
+        // The landing page (public/welcome/) is for people who have not opened
+        // the app yet, so it stays out of every install's precache — and
+        // because navigateFallback is left at the plugin's 'index.html', its
+        // URL is denied below: otherwise an installed worker would answer
+        // /welcome/ with the app shell instead of the page. `search` is part
+        // of what the denylist sees, hence the `?` (a link with a UTM tag).
+        globIgnores: ['**/__forms.html', '**/og.png', '**/welcome/**'],
+        navigateFallbackDenylist: [/^\/welcome(?:[/?]|$)/],
         // The offline course list (public/courses/, ~1 MB raw, ~280 KB
         // gzipped) is deliberately not in the precache above — `json` is not
         // in globPatterns — so installing or updating the app never downloads
