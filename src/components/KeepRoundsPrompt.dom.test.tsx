@@ -140,6 +140,20 @@ describe('KeepRoundsPrompt', () => {
     expect((await screen.findByRole('status')).textContent).toBe('Backup saved.');
   });
 
+  it('after a backup from a later reminder, the stale count goes and the status stays', async () => {
+    onPlatform('browser');
+    finishedRounds(3);
+    answeredFirst();
+    vi.spyOn(backup, 'offerBackup').mockResolvedValue({ ok: true });
+    render(<KeepRoundsPrompt />);
+    expect(screen.getByText('3 rounds aren’t backed up.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Save a backup' }));
+    expect((await screen.findByRole('status')).textContent).toBe('Backup saved.');
+    expect(screen.queryByText(/aren’t backed up/)).toBeNull();
+    expect(screen.queryByText(/saved in this browser and nowhere else/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Done' })).toBeTruthy();
+  });
+
   it('waits for ten unbacked rounds in an installed app', () => {
     onPlatform('installed');
     finishedRounds(9);

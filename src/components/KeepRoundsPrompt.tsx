@@ -117,8 +117,14 @@ export function KeepRoundsPrompt({ offerInstall = true }: { offerInstall?: boole
 
   return (
     <div className="keep-rounds">
-      <strong>{heading}</strong>
-      <p>{body}</p>
+      {/* The count was read on mount; once backed up it is stale, so the
+          status line below speaks alone. */}
+      {!backedUp && (
+        <>
+          <strong>{heading}</strong>
+          <p>{body}</p>
+        </>
+      )}
       {offerInstall && !installed && <InstallPrompt />}
       <div className="keep-rounds-actions">
         {!backedUp && (
