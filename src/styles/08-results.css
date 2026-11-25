@@ -23,6 +23,11 @@
 .keep-rounds .install-btn {
   margin: 0 0 10px;
 }
+/* Inside Home's centred empty state, the restore card reads as a card. */
+.empty-state .bring-rounds {
+  margin: 16px 0 0;
+  text-align: start;
+}
 /* The move notice on the old address borrows the prompt's card above. */
 .moved-steps {
   margin: 0 0 10px;

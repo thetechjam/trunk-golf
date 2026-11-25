@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { DownloadIcon } from '../icons';
+import { requestPersistentStorage } from '../persistence';
+import { installSteps, storageRisk } from '../platform';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -22,7 +24,11 @@ export function InstallPrompt() {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
     };
-    const onInstalled = () => setInstalled(true);
+    const onInstalled = () => {
+      setInstalled(true);
+      // Chromium grants persistent storage to installed sites.
+      void requestPersistentStorage();
+    };
     window.addEventListener('beforeinstallprompt', onPrompt);
     window.addEventListener('appinstalled', onInstalled);
     return () => {
@@ -43,5 +49,26 @@ export function InstallPrompt() {
     <button className="install-btn" onClick={install}>
       <DownloadIcon size={17} /> Install Trunk as an app
     </button>
+  );
+}
+
+/**
+ * Home's standing tip. Where Safari clears a tab's data after seven days, it
+ * says how to stop that, and that the home screen app starts empty when there
+ * is something to bring over. Installed and native need no tip at all.
+ */
+export function HomeScreenTip({ hasRounds }: { hasRounds: boolean }) {
+  const risk = storageRisk();
+  if (risk === 'installed' || risk === 'native') return null;
+  if (risk === 'browser') {
+    return <p className="hint">Tip: add Trunk to your home screen for one-tap access on the course.</p>;
+  }
+  const steps = installSteps();
+  return (
+    <p className="hint">
+      Tip: add Trunk to your home screen, so Safari keeps your rounds.
+      {hasRounds && ' Back up first — the home screen app starts empty.'}
+      {steps && ` ${steps}`}
+    </p>
   );
 }

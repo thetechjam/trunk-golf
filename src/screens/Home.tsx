@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Round } from '../types';
 import { listRounds } from '../storage';
 import { count } from '../plural';
-import { InstallPrompt } from '../components/InstallPrompt';
+import { HomeScreenTip, InstallPrompt } from '../components/InstallPrompt';
 import { RoundCard } from '../components/RoundCard';
 import { ResumeCard } from '../components/ResumeCard';
 import { TripCard } from '../components/TripCard';
@@ -12,6 +12,7 @@ import { FlagIcon, TrunkMark, TrophyIcon, GearIcon, ChartIcon, ScrambleIcon } fr
 import { SettingsSheet } from '../components/SettingsSheet';
 import { KeepRoundsPrompt } from '../components/KeepRoundsPrompt';
 import { MovedNotice } from '../components/MovedNotice';
+import { BringRoundsOver } from '../components/BringRoundsOver';
 import { countsForStats } from '../stats';
 
 /**
@@ -133,6 +134,8 @@ export function Home({
           <button className="btn-ghost empty-help" onClick={openHelp}>
             New here? See how it works ›
           </button>
+          {/* An empty Home Screen app on Apple devices: the rounds may be in Safari. */}
+          <BringRoundsOver onRestored={() => setRounds(listRounds())} />
         </div>
       )}
 
@@ -167,8 +170,7 @@ export function Home({
         </section>
       )}
 
-      <p className="hint">Tip: add Trunk to your home screen for one-tap access on the course — and so Safari
-        keeps your saved rounds, which it clears from a site left unopened for seven days.</p>
+      <HomeScreenTip hasRounds={rounds.length > 0} />
 
       {showSettings && (
         <SettingsSheet
