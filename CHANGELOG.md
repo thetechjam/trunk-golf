@@ -55,11 +55,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   up first, because the home screen app starts empty.
 - **A reminder when rounds aren’t backed up.** Trunk now records when a
   backup was last saved, and the same card returns on Home and Results when
-  finished rounds have changed since: after one round and two quiet weeks in
-  a Safari tab, three rounds and a month in other browsers, ten rounds and
-  three months in an installed app. "Not now" waits out the same quiet
+  finished rounds have changed since: after any new round in a Safari tab,
+  unless snoozed for five days, since Safari can delete it after seven; three
+  rounds and a month in other browsers; ten rounds and three months in an
+  installed app. Outside a Safari tab, "Not now" waits out the same quiet
   period. Phones that already had a finished round when the first prompt
-  arrived, and were never asked, get the reminder too.
+  arrived, and were never asked, get the reminder too — and so do people who
+  tapped the old "Don’t ask again", because that choice was stored in the
+  same flag as the phones that were dismissed automatically.
 - **The last backup in Settings.** Under "Back up your rounds": "Never backed
   up", or "Last backup: Tuesday · 2 rounds since". It updates as soon as a
   backup or restore finishes. A full restore counts as a backup, so moving

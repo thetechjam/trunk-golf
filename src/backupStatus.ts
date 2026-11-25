@@ -21,7 +21,7 @@ export interface NudgeRule {
 
 /** How many unbacked finished rounds, and how long since the last answer, before asking again. */
 export const NUDGE_RULES: Record<StorageRisk, NudgeRule> = {
-  evicting: { minUnbacked: 1, quietDays: 14 },
+  evicting: { minUnbacked: 1, quietDays: 5 },
   browser: { minUnbacked: 3, quietDays: 30 },
   installed: { minUnbacked: 10, quietDays: 90 },
   native: { minUnbacked: 10, quietDays: 90 },
@@ -63,7 +63,11 @@ export function backupStatus(input: {
   if (!settings.firstFinishPromptDismissed) return { ...base, due: true, first: true };
 
   const rule = NUDGE_RULES[risk] ?? NUDGE_RULES.browser;
-  const lastAnswer = Math.max(since, settings.backupNudgeSnoozedAt ?? 0);
+  // In a Safari tab a round can be wiped after seven days, so a recent backup
+  // buys no quiet: any newer finished round is due. Only "Not now" waits, and
+  // for less than the wipe window.
+  const snoozedAt = settings.backupNudgeSnoozedAt ?? 0;
+  const lastAnswer = risk === 'evicting' ? snoozedAt : Math.max(since, snoozedAt);
   const due = unbacked >= rule.minUnbacked && now - lastAnswer >= rule.quietDays * DAY_MS;
   return { ...base, due, first: false };
 }

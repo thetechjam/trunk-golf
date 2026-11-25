@@ -89,12 +89,12 @@ describe('KeepRoundsPrompt', () => {
     notNow();
     view.unmount();
 
-    vi.setSystemTime(T0 + 13 * DAY);
+    vi.setSystemTime(T0 + 4 * DAY);
     const again = render(<KeepRoundsPrompt />);
     expect(screen.queryByText('1 round isn’t backed up.')).toBeNull();
     again.unmount();
 
-    vi.setSystemTime(T0 + 14 * DAY);
+    vi.setSystemTime(T0 + 5 * DAY);
     render(<KeepRoundsPrompt />);
     expect(screen.getByText('1 round isn’t backed up.')).toBeTruthy();
   });

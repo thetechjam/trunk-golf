@@ -61,7 +61,7 @@ describe('backupStatus', () => {
     expect(at(10)).toBe(true);
   });
 
-  it('stays quiet for fourteen days after "Not now" in a Safari tab', () => {
+  it('stays quiet for five days after "Not now" in a Safari tab', () => {
     const snoozed = (days: number) =>
       backupStatus({
         rounds: [done(NOW - 30 * DAY)],
@@ -69,9 +69,36 @@ describe('backupStatus', () => {
         risk: 'evicting',
         now: NOW,
       }).due;
-    expect(snoozed(13)).toBe(false);
-    expect(snoozed(14)).toBe(true);
-    expect(NUDGE_RULES.evicting.quietDays).toBe(14);
+    expect(snoozed(4)).toBe(false);
+    expect(snoozed(5)).toBe(true);
+    expect(NUDGE_RULES.evicting.quietDays).toBe(5);
+    // Shorter than the seven days after which Safari can wipe the round.
+    expect(NUDGE_RULES.evicting.quietDays).toBeLessThan(7);
+  });
+
+  it('is due in a Safari tab the day after a backup, once a new round is finished', () => {
+    const s = backupStatus({
+      rounds: [done(NOW - 2 * DAY), done(NOW)],
+      settings: settings({ lastBackupAt: NOW - DAY }),
+      risk: 'evicting',
+      now: NOW,
+    });
+    expect(s).toMatchObject({ unbacked: 1, first: false, due: true });
+  });
+
+  it('in a Safari tab, waits out only the "Not now", not the backup', () => {
+    const s = (snoozedDaysAgo: number) =>
+      backupStatus({
+        rounds: [done(NOW - 3 * DAY), done(NOW)],
+        settings: settings({
+          lastBackupAt: NOW - 2 * DAY,
+          backupNudgeSnoozedAt: NOW - snoozedDaysAgo * DAY,
+        }),
+        risk: 'evicting',
+        now: NOW,
+      }).due;
+    expect(s(4)).toBe(false);
+    expect(s(5)).toBe(true);
   });
 
   it('counts only finished rounds changed since the last backup', () => {
@@ -86,19 +113,23 @@ describe('backupStatus', () => {
     expect(s).toMatchObject({ finished: 3, unbacked: 1, lastBackupAt: T, due: true });
   });
 
-  it('waits out the quiet period from the backup, not from the new round', () => {
-    const T = NOW - 10 * DAY;
-    const status = (now: number) =>
-      backupStatus({
-        rounds: [done(T - DAY), done(T + DAY)],
-        settings: settings({ lastBackupAt: T }),
-        risk: 'evicting',
-        now,
-      });
-    expect(status(NOW)).toMatchObject({ unbacked: 1, due: false });
-    expect(status(T + 14 * DAY - 1).due).toBe(false);
-    expect(status(T + 14 * DAY).due).toBe(true);
-  });
+  it.each(['browser', 'installed', 'native'] as const)(
+    'on %s, waits out the quiet period from the backup, not from the new round',
+    (risk) => {
+      const { quietDays } = NUDGE_RULES[risk];
+      const T = NOW - 200 * DAY;
+      const status = (now: number) =>
+        backupStatus({
+          rounds: [done(T - DAY), ...many(NUDGE_RULES[risk].minUnbacked, T + DAY)],
+          settings: settings({ lastBackupAt: T }),
+          risk,
+          now,
+        });
+      expect(status(T + 2 * DAY)).toMatchObject({ due: false });
+      expect(status(T + quietDays * DAY - 1).due).toBe(false);
+      expect(status(T + quietDays * DAY).due).toBe(true);
+    }
+  );
 
   it('is not due when everything finished is in the last backup', () => {
     const s = backupStatus({
