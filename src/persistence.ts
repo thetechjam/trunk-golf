@@ -2,15 +2,24 @@
  * Asking the browser not to throw the rounds away.
  *
  * Everything Trunk saves lives in this origin's storage, and a browser is
- * allowed to evict that under pressure — Safari goes further and clears a
- * site's data after seven days without a visit unless the app is installed
- * to the home screen. `navigator.storage.persist()` asks for the storage to
- * be treated as persistent; Chrome grants it to installed or engaged sites,
- * Firefox asks the user, Safari ignores it (installation is the protection
- * there). The answer is advisory, so nothing waits on it: it is recorded for
- * the diagnostics lines in Settings, where a bug report can read it off a
+ * allowed to evict that under pressure. `navigator.storage.persist()` asks for
+ * the storage to be treated as persistent, which exempts it from eviction
+ * under storage pressure — and that is all it promises. Chrome grants it to
+ * installed or engaged sites, Firefox asks the user, and Safari implements it
+ * too, granting it on its own heuristics.
+ *
+ * It does not lift Safari's separate seven-day rule: in a WebKit browser tab a
+ * site's data is cleared after seven days of browsing without a visit whether
+ * or not `persist()` said yes. Only the Home Screen app is exempt, which is why
+ * the diagnostics line goes through `describeStorage` with the platform's
+ * `storageRisk()` rather than reporting the browser's answer alone.
+ *
+ * The answer is advisory, so nothing waits on it: it is recorded for the
+ * diagnostics lines in Settings, where a bug report can read it off a
  * screenshot the way it reads the build stamp.
  */
+
+import type { StorageRisk } from './platform';
 
 export type PersistState =
   /** The API is not there, or the request has not come back yet. */
@@ -56,6 +65,45 @@ export async function requestPersistentStorage(
     state = 'unknown';
   }
   return state;
+}
+
+/**
+ * Reads whether storage is already persistent. Never asks, so never prompts:
+ * used at a launch with nothing saved yet, where Firefox would otherwise show
+ * a permission prompt to someone who has not started a round.
+ */
+export async function readPersistence(
+  storage: Pick<StorageManager, 'persisted'> | undefined = globalThis.navigator?.storage
+): Promise<PersistState> {
+  if (!storage || typeof storage.persisted !== 'function') {
+    state = 'unknown';
+    return state;
+  }
+  try {
+    state = (await storage.persisted()) ? 'persisted' : 'best-effort';
+  } catch {
+    state = 'unknown';
+  }
+  return state;
+}
+
+/**
+ * The Settings diagnostics line, which has to account for where Trunk is
+ * running: a granted `persist()` in a WebKit tab is not protection from the
+ * seven-day rule, so it is never shown as "protected" there.
+ */
+export function describeStorage(s: PersistState, risk: StorageRisk): string {
+  switch (risk) {
+    case 'native':
+      // The sheet hides the line on native; there is nothing to report.
+      return '';
+    case 'evicting':
+      return 'Storage: browser tab — cleared after 7 days unused';
+    case 'installed':
+      return s === 'persisted' ? 'Storage protected' : 'Storage: installed app';
+    default:
+      return describePersistence(s);
+  }
 }
 
 /** Test seam. */

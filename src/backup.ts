@@ -6,8 +6,10 @@ import {
   getAliases,
   getDistinct,
   RestoreUndoError,
+  saveSettings,
 } from './storage';
 import { writeFailureReason } from './kv';
+import { count } from './plural';
 import { mergePeopleData, type PeopleData } from './people';
 import { GAMES } from './games';
 
@@ -101,6 +103,11 @@ export async function offerBackup(now: Date = new Date()): Promise<BackupOffer> 
       a.download = name;
       a.click();
     }
+    // "A backup was handed over", not "a backup exists": a share target
+    // accepting the file, or a download starting, is all Trunk can see. A
+    // refused write returns null rather than throwing, and costs only a
+    // reminder that comes round again.
+    saveSettings({ lastBackupAt: now.getTime() });
     return { ok: true };
   } catch (err) {
     if ((err as Error)?.name === 'AbortError') return { ok: false, aborted: true };
@@ -385,6 +392,19 @@ export function restoreBackup(text: string): RestoreResult {
     return { ok: false, error: restoreFailureMessage(err) };
   }
 
+  // A restore onto a fresh container — the Safari tab to Home Screen app
+  // move — leaves this device holding nothing the file does not. When every
+  // round here is in the file at least as new, the file is a complete backup
+  // of this device, so record it; otherwise the backup nudge would fire
+  // straight after a transfer. Only finished rounds count, as they do for the
+  // nudge: a round in progress here is not yet anything to back up.
+  const inFile = new Map(parsed.file.rounds.map((r) => [r.id, r.updatedAt]));
+  const finished = rounds.rounds.filter((r) => r.status === 'finished');
+  const covered =
+    rounds.rounds.length > 0 &&
+    finished.every((r) => (inFile.get(r.id) ?? -Infinity) >= r.updatedAt);
+  if (covered) saveSettings({ lastBackupAt: Date.now() });
+
   return {
     ok: true,
     rounds: rounds.report,
@@ -392,4 +412,36 @@ export function restoreBackup(text: string): RestoreResult {
     dropped: parsed.droppedRounds + parsed.droppedCourses,
     people: people.added,
   };
+}
+
+/** Reads a picked file and restores it. Never throws. */
+export async function restoreFromFile(file: Pick<File, 'text'>): Promise<RestoreResult> {
+  let text: string;
+  try {
+    text = await file.text();
+  } catch {
+    return { ok: false, error: "That file couldn't be read." };
+  }
+  return restoreBackup(text);
+}
+
+/** "Added 3 rounds, updated 1 round · 2 items already up to date." — only the parts that happened. */
+export function describeRestore(result: Extract<RestoreResult, { ok: true }>): string {
+  const { rounds, courses, dropped, people } = result;
+  const changes: string[] = [];
+  if (rounds.added) changes.push(`added ${count(rounds.added, 'round')}`);
+  if (rounds.updated) changes.push(`updated ${count(rounds.updated, 'round')}`);
+  if (courses.added) changes.push(`added ${count(courses.added, 'course')}`);
+  if (people) changes.push(`matched ${count(people, 'merged name')}`);
+
+  const untouched = rounds.kept + courses.kept;
+  const parts: string[] = [];
+  // Capitalized by the caller's sentence position, so build it in lower case
+  // and fix the first letter once at the end.
+  parts.push(changes.length ? changes.join(', ') : 'nothing new to add');
+  if (untouched) parts.push(`${count(untouched, 'item')} already up to date`);
+  if (dropped) parts.push(`${count(dropped, 'entry', 'entries')} in the file couldn't be read`);
+
+  const s = parts.join(' · ');
+  return s.charAt(0).toUpperCase() + s.slice(1) + '.';
 }

@@ -1,11 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import App from './App.tsx';
-import { getSettings, skipKeepPromptIfRoundsExist } from './storage';
+import { getSettings, listRounds, skipKeepPromptIfRoundsExist } from './storage';
 import { applyTheme, watchSystemTheme } from './theme';
 import { flushQueue, postFeedback, watchConnectivity } from './feedback';
 import { isNative } from './native';
-import { requestPersistentStorage } from './persistence';
+import { readPersistence, requestPersistentStorage } from './persistence';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { StartupError } from './components/StartupError';
 
@@ -48,11 +48,14 @@ export async function startApp(
     void flushQueue(postFeedback).catch(() => {});
     watchConnectivity(postFeedback);
 
-    // Ask the browser to keep this origin's storage. Advisory and
+    // Ask the browser to keep this origin's storage — once there is something
+    // to keep. A first launch with nothing saved only reads the answer, so
+    // Firefox does not show a permission prompt to someone who has not
+    // started a round; finishing one asks (App.tsx). Advisory and
     // asynchronous: the answer only feeds the diagnostics line in Settings.
     // The native shell has its own storage (native.ts) and no eviction to ask
     // about.
-    if (!isNative()) void requestPersistentStorage();
+    if (!isNative()) void (listRounds().length > 0 ? requestPersistentStorage() : readPersistence());
   } catch (err) {
     console.error('Trunk could not start.', err);
     root.render(<StartupError error={err} />);

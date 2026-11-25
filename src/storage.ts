@@ -31,6 +31,14 @@ export interface Settings {
    * prompt existed; `skipKeepPromptIfRoundsExist` fills that in.
    */
   firstFinishPromptDismissed: boolean;
+  /**
+   * When a backup was last handed to the user, or a restore left this device
+   * fully covered by the file. Ms since epoch; null = never. Means "a backup
+   * was handed over", not "a backup exists" — Trunk cannot see where it went.
+   */
+  lastBackupAt: number | null;
+  /** When "Not now" was last tapped on the backup nudge. Ms since epoch; null = never. */
+  backupNudgeSnoozedAt: number | null;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -39,10 +47,15 @@ export const DEFAULT_SETTINGS: Settings = {
   glare: false,
   reporterName: '',
   firstFinishPromptDismissed: false,
+  lastBackupAt: null,
+  backupNudgeSnoozedAt: null,
 };
 
 const THEMES: readonly string[] = ['system', 'light', 'dark'];
 const isTheme = (v: unknown): v is Theme => typeof v === 'string' && THEMES.includes(v);
+/** A stored timestamp, or null for anything that is not a plausible one. */
+const timestamp = (v: unknown): number | null =>
+  typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
 
 export function getSettings(): Settings {
   try {
@@ -61,6 +74,8 @@ export function getSettings(): Settings {
         typeof p.firstFinishPromptDismissed === 'boolean'
           ? p.firstFinishPromptDismissed
           : DEFAULT_SETTINGS.firstFinishPromptDismissed,
+      lastBackupAt: timestamp(p.lastBackupAt),
+      backupNudgeSnoozedAt: timestamp(p.backupNudgeSnoozedAt),
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -97,6 +112,8 @@ export function saveSettings(patch: Partial<Settings>): Settings | null {
     glare: patch.glare ?? cur.glare,
     reporterName: patch.reporterName ?? cur.reporterName,
     firstFinishPromptDismissed: patch.firstFinishPromptDismissed ?? cur.firstFinishPromptDismissed,
+    lastBackupAt: patch.lastBackupAt ?? cur.lastBackupAt,
+    backupNudgeSnoozedAt: patch.backupNudgeSnoozedAt ?? cur.backupNudgeSnoozedAt,
   };
   return tryWrite(SETTINGS_KEY, JSON.stringify(next)) ? next : null;
 }

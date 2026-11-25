@@ -68,6 +68,8 @@ describe('settings', () => {
       glare: true,
       reporterName: '',
       firstFinishPromptDismissed: false,
+      lastBackupAt: null,
+      backupNudgeSnoozedAt: null,
     });
   });
 
@@ -107,6 +109,56 @@ describe('settings', () => {
     saveSettings({ firstFinishPromptDismissed: true });
     saveSettings({ keepAwake: false });
     expect(getSettings().firstFinishPromptDismissed).toBe(true);
+  });
+
+  it('defaults both backup timestamps to null', () => {
+    expect(getSettings().lastBackupAt).toBeNull();
+    expect(getSettings().backupNudgeSnoozedAt).toBeNull();
+  });
+
+  it('reads settings written before the backup timestamps existed', () => {
+    store.set('press.settings.v1', JSON.stringify({ keepAwake: false, firstFinishPromptDismissed: true }));
+    expect(getSettings()).toMatchObject({
+      keepAwake: false,
+      firstFinishPromptDismissed: true,
+      lastBackupAt: null,
+      backupNudgeSnoozedAt: null,
+    });
+  });
+
+  it('keeps lastBackupAt across an unrelated save', () => {
+    saveSettings({ lastBackupAt: 1_700_000_000_000 });
+    saveSettings({ keepAwake: false });
+    expect(getSettings().lastBackupAt).toBe(1_700_000_000_000);
+  });
+
+  it('keeps backupNudgeSnoozedAt across an unrelated save', () => {
+    saveSettings({ backupNudgeSnoozedAt: 1_700_000_000_000 });
+    saveSettings({ theme: 'dark' });
+    expect(getSettings().backupNudgeSnoozedAt).toBe(1_700_000_000_000);
+  });
+
+  it.each([
+    ['a string', '1700000000000'],
+    ['a negative number', -5],
+    ['zero', 0],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('reads %s stored as a timestamp as null', (_name, v) => {
+    store.set('press.settings.v1', '{"keepAwake":false}');
+    // JSON cannot carry NaN or Infinity, so the parsed object is handed back
+    // directly: this is the field check, not a parse failure.
+    const parse = vi
+      .spyOn(JSON, 'parse')
+      .mockReturnValue({ keepAwake: false, lastBackupAt: v, backupNudgeSnoozedAt: v });
+    try {
+      const got = getSettings();
+      expect(got.keepAwake).toBe(false);
+      expect(got.lastBackupAt).toBeNull();
+      expect(got.backupNudgeSnoozedAt).toBeNull();
+    } finally {
+      parse.mockRestore();
+    }
   });
 });
 

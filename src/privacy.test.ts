@@ -43,6 +43,9 @@ const CLAIMS = [
   'neither stores nor logs the photo',
   'https://www.anthropic.com/legal/privacy',
   'https://www.netlify.com/privacy/',
+  // Installing exempts the home screen app, not the Safari tab's copy.
+  'exempts it from that limit',
+  "keeps its own storage, separate from Safari's",
 ];
 
 describe('the privacy page', () => {

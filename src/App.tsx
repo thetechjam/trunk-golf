@@ -6,6 +6,8 @@ import { Play } from './screens/Play';
 import { Results } from './screens/Results';
 import { saveRound, getRound, listCourses, saveCourse, ROUNDS_KEY, COURSES_KEY } from './storage';
 import { kv } from './kv';
+import { isNative } from './native';
+import { requestPersistentStorage } from './persistence';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { dismissSplash } from './splash';
 import { createNavigator } from './navigation';
@@ -356,6 +358,7 @@ export default function App() {
     if (!round) return;
     // Finish is only offered on the card, so it keeps a sent round too.
     updateFromCard({ ...round, status: 'finished' });
+    if (!isNative()) void requestPersistentStorage();
     nav.replace('results');
   };
 
