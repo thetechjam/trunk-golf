@@ -22,15 +22,15 @@ export function HelpSheet({ onBack }: Props) {
         <p>
           Type a <strong>handicap</strong> beside a player — or a Handicap Index,
           on a course with a slope and rating — and games score net for
-          everyone, with each game set to gross or net in the Scoring row. Blank
+          everyone, with each game set to gross or net under Handicap options. Blank
           handicaps play gross. In Match Play and Nassau the lowest handicap plays
           off scratch and the others take the difference — 90% of it in a
           four-ball — as the Rules of Handicapping recommend.
         </p>
         <p>
-          Put a <strong>stake</strong> on a game in the Money row and Trunk keeps
-          a running total through the round, then settles the group up in the
-          fewest payments. Stakes and handicaps can be changed mid-round.
+          Put a <strong>stake</strong> on a game on its tile (or in the Money
+          row) and Trunk keeps a running total through the round, then settles
+          the group up in the fewest payments. Stakes and handicaps can be changed mid-round.
         </p>
         <p>
           A round can be <strong>sent by link or QR code</strong>: the whole card
