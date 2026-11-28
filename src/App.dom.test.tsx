@@ -8,6 +8,7 @@ import { refuseStorageKey } from './testQuota';
 import { setBackend, snapshotBackend } from './kv';
 import { getSettings, saveSettings, skipKeepPromptIfRoundsExist } from './storage';
 import { buildBackup } from './backup';
+import * as platform from './platform';
 
 /**
  * Navigation and the hardware back button.
@@ -533,8 +534,9 @@ describe('a round that cannot be saved', () => {
 });
 
 /**
- * Safari drops a site's data after seven days unless the app is on the home
- * screen. The ask waits until a round is actually finished, and it waits once.
+ * Browsers can drop a site's data (Safari after seven days away), so Trunk
+ * asks for a backup — once a round is actually finished, below the settle-up
+ * on the round just finished, and as the one message on Home.
  */
 describe('the prompt after the first finished round', () => {
   const finished = () =>
@@ -542,29 +544,40 @@ describe('the prompt after the first finished round', () => {
       status: 'in_progress',
       scores: Object.fromEntries(hs.map((h) => [h.number, { p1: 4, p2: 5 }])),
     });
+  const card = () => screen.queryByRole('heading', { name: 'Keep your rounds safe' });
+  const tip = () => document.querySelector('p.hint');
+  const follows = (a: Element, b: Element) =>
+    !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
-  it('asks to back up and to add Trunk to the home screen, and only once', async () => {
+  it('asks to back up after Finish, below the settle-up, and only once', async () => {
     seed([finished()]);
     const user = userEvent.setup();
     const view = render(<App />);
 
-    // Home's standing hint mentions the seven days too. The prompt is the one
-    // with the backup button, and it waits until a round is finished.
+    // It waits until a round is finished.
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
 
     await user.click(screen.getByText('Test Links'));
     await user.click(await screen.findByRole('button', { name: 'Finish' }));
     expect(await screen.findByRole('heading', { name: 'Results' })).toBeTruthy();
 
-    const prompt = screen.getByText('Keep these rounds.').parentElement!;
-    expect(prompt.textContent).toMatch(/seven days/);
-    expect(prompt.textContent).toMatch(/home screen/);
+    const prompt = card()!.closest('.keep-rounds')!;
+    expect(prompt.textContent).toMatch(/live only in this browser/);
     expect(screen.getByRole('button', { name: 'Save a backup' })).toBeTruthy();
 
+    // The result comes first: nothing above it, and the card after who pays whom.
+    const settlement = view.container.querySelector('.settlement')!;
+    expect(settlement).toBeTruthy();
+    expect(follows(settlement, prompt)).toBe(true);
+    expect(view.container.querySelector('.results-meta')!.previousElementSibling).toBe(
+      view.container.querySelector('.results header.bar')
+    );
+
     await user.click(screen.getByRole('button', { name: 'Not now' }));
-    expect(screen.queryByText('Keep these rounds.')).toBeNull();
+    expect(card()).toBeNull();
     expect(getSettings().firstFinishPromptDismissed).toBe(true);
     expect(getSettings().backupNudgeSnoozedAt).toBeGreaterThan(0);
+    expect(getSettings().backupNudgeSnoozeCount).toBe(1);
 
     await user.click(screen.getByRole('button', { name: 'Home' }));
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
@@ -574,22 +587,39 @@ describe('the prompt after the first finished round', () => {
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
   });
 
+  it('does not ask on Results when a finished round is opened from Home', async () => {
+    seed([round({ status: 'finished' })]);
+    const user = userEvent.setup();
+    render(<App />);
+    // Due, so Home carries it…
+    expect(card()).toBeTruthy();
+
+    await user.click(screen.getByText('Test Links'));
+    expect(await screen.findByRole('heading', { name: 'Results' })).toBeTruthy();
+    // …but an old round on Results is not the moment.
+    expect(card()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
+  });
+
   it('saves a backup from the prompt, then stops asking', async () => {
     seed([round({ status: 'finished' })]);
     const user = userEvent.setup();
     const view = render(<App />);
     await user.click(screen.getByRole('button', { name: 'Save a backup' }));
-    expect(await screen.findByText('Backup saved.')).toBeTruthy();
+    expect(await screen.findByText('Backup saved')).toBeTruthy();
     // The backup was the answer: it is remembered, and the way out says so.
     expect(getSettings().firstFinishPromptDismissed).toBe(true);
     expect(getSettings().lastBackupAt).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Done' }));
-    expect(screen.queryByText('Keep these rounds.')).toBeNull();
+    const done = screen.getByRole('button', { name: 'Done' });
+    expect(done.classList.contains('btn-secondary')).toBe(true);
+    await user.click(done);
+    expect(screen.queryByText('Backup saved')).toBeNull();
 
     view.unmount();
     render(<App />);
-    expect(screen.queryByText('Keep these rounds.')).toBeNull();
+    expect(card()).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
   });
 
   it('still closes when the dismissal cannot be stored', async () => {
@@ -599,7 +629,7 @@ describe('the prompt after the first finished round', () => {
     const restore = refuseStorageKey('press.settings.v1');
     try {
       await user.click(screen.getByRole('button', { name: 'Not now' }));
-      expect(screen.queryByText('Keep these rounds.')).toBeNull();
+      expect(card()).toBeNull();
     } finally {
       restore();
     }
@@ -614,13 +644,13 @@ describe('the prompt after the first finished round', () => {
     const view = render(<App />);
     await user.click(screen.getByText('Test Links'));
     await user.click(await screen.findByRole('button', { name: 'Finish' }));
-    expect(await screen.findByText('Keep these rounds.')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Keep your rounds safe' })).toBeTruthy();
 
     // Closed without answering, then opened again.
     view.unmount();
     skipKeepPromptIfRoundsExist();
     render(<App />);
-    expect(screen.getByText('Keep these rounds.')).toBeTruthy();
+    expect(card()).toBeTruthy();
     expect(getSettings().firstFinishPromptDismissed).toBe(false);
   });
 
@@ -630,19 +660,39 @@ describe('the prompt after the first finished round', () => {
       seed(['a', 'b', 'c'].map((id) => round({ id, status: 'finished', updatedAt: 5 })));
       saveSettings({ firstFinishPromptDismissed: true });
     };
+    const reminder = () => screen.queryByRole('heading', { name: '3 rounds aren’t backed up' });
+
+    it('is the one message on Home: no tip under it, and none uncovered by answering it', async () => {
+      seedReminder();
+      const user = userEvent.setup();
+      const view = render(<App />);
+      expect(reminder()).toBeTruthy();
+      expect(tip()).toBeNull();
+
+      await user.click(screen.getByRole('button', { name: 'Not now' }));
+      expect(reminder()).toBeNull();
+      // Closing the card does not reveal another in the same visit.
+      expect(tip()).toBeNull();
+
+      // Next visit nothing is due, so the browser tip has the slot.
+      view.unmount();
+      render(<App />);
+      expect(reminder()).toBeNull();
+      expect(tip()).toBeTruthy();
+    });
 
     it('goes away after a backup from Settings, without leaving Home', async () => {
       seedReminder();
       const user = userEvent.setup();
       render(<App />);
-      expect(screen.getByText('3 rounds aren’t backed up.')).toBeTruthy();
+      expect(reminder()).toBeTruthy();
 
       await user.click(screen.getByRole('button', { name: 'Settings' }));
       await user.click(screen.getByRole('button', { name: /Back up your rounds/i }));
       expect(await screen.findByText('Backed up 3 rounds and 0 courses.')).toBeTruthy();
 
       expect(getSettings().lastBackupAt).toBeGreaterThan(0);
-      expect(screen.queryByText(/aren’t backed up/)).toBeNull();
+      expect(reminder()).toBeNull();
       expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
     });
 
@@ -650,7 +700,7 @@ describe('the prompt after the first finished round', () => {
       seedReminder();
       const user = userEvent.setup();
       const { container } = render(<App />);
-      expect(screen.getByText('3 rounds aren’t backed up.')).toBeTruthy();
+      expect(reminder()).toBeTruthy();
 
       await user.click(screen.getByRole('button', { name: 'Settings' }));
       const file = buildBackup(
@@ -667,7 +717,55 @@ describe('the prompt after the first finished round', () => {
       );
 
       await waitFor(() => expect(getSettings().lastBackupAt).toBeGreaterThan(0));
-      expect(screen.queryByText(/aren’t backed up/)).toBeNull();
+      expect(reminder()).toBeNull();
     });
+  });
+});
+
+/**
+ * In a Safari tab, Home's one message on first open is how to add Trunk to the
+ * Home Screen — unless a backup is due, which comes first.
+ */
+describe('Home in a Safari tab', () => {
+  const homeCard = () => screen.queryByRole('heading', { name: 'Add Trunk to your Home Screen' });
+  const backupCard = () => screen.queryByRole('heading', { name: 'Keep your rounds safe' });
+  const tip = () => document.querySelector('p.hint');
+
+  beforeEach(() => {
+    vi.spyOn(platform, 'storageRisk').mockReturnValue('evicting');
+    vi.spyOn(platform, 'isIOS').mockReturnValue(true);
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('shows the Home Screen card on an empty Home, and no grey tip', () => {
+    const { container } = render(<App />);
+    expect(homeCard()).toBeTruthy();
+    expect(tip()).toBeNull();
+    // In the flow under the empty state, not a banner above it.
+    const card = homeCard()!.closest('section')!;
+    const empty = container.querySelector('.empty-state')!;
+    expect(empty.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows only the backup card when a backup is due', () => {
+    seed([round({ status: 'finished' })]);
+    render(<App />);
+    expect(backupCard()).toBeTruthy();
+    expect(homeCard()).toBeNull();
+    expect(tip()).toBeNull();
+  });
+
+  it('shows neither after Got it, on the next visit too', async () => {
+    const user = userEvent.setup();
+    const view = render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Got it' }));
+    expect(homeCard()).toBeNull();
+    expect(getSettings().installTipDismissed).toBe(true);
+
+    view.unmount();
+    render(<App />);
+    expect(homeCard()).toBeNull();
+    expect(backupCard()).toBeNull();
+    expect(tip()).toBeNull();
   });
 });

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Round } from '../types';
 import { listRounds } from '../storage';
 import { count } from '../plural';
-import { HomeScreenTip, InstallPrompt } from '../components/InstallPrompt';
+import { HomeScreenCard, HomeScreenTip, InstallPrompt, homeScreenCardDue } from '../components/InstallPrompt';
 import { RoundCard } from '../components/RoundCard';
 import { ResumeCard } from '../components/ResumeCard';
 import { TripCard } from '../components/TripCard';
@@ -10,7 +10,7 @@ import { activeTrip } from '../trips';
 import { liveRound } from '../roundSummary';
 import { FlagIcon, TrunkMark, TrophyIcon, GearIcon, ChartIcon, ScrambleIcon } from '../icons';
 import { SettingsSheet } from '../components/SettingsSheet';
-import { KeepRoundsPrompt } from '../components/KeepRoundsPrompt';
+import { KeepRoundsPrompt, keepRoundsPromptDue } from '../components/KeepRoundsPrompt';
 import { MovedNotice } from '../components/MovedNotice';
 import { BringRoundsOver } from '../components/BringRoundsOver';
 import { countsForStats } from '../stats';
@@ -25,6 +25,26 @@ import { countsForStats } from '../stats';
  * older is a search, which is what the history screen is for.
  */
 const ON_HOME = 5;
+
+/**
+ * The one message about keeping rounds that Home shows on this visit.
+ *
+ * The backup card, the Home Screen card and the grey tip each made sense
+ * alone; stacked, they were three warnings before the user's own rounds. So
+ * Home picks one when it opens, in this order: a due backup, then (in a
+ * Safari tab that can be wiped) how to add Trunk to the Home Screen, then the
+ * browser one-liner, which is null wherever it does not apply.
+ *
+ * Picked once rather than on every render, so answering one card never
+ * uncovers another in the same visit.
+ */
+type Surface = 'backup' | 'home-screen' | 'tip';
+
+function pickSurface(): Surface {
+  if (keepRoundsPromptDue()) return 'backup';
+  if (homeScreenCardDue()) return 'home-screen';
+  return 'tip';
+}
 
 interface Props {
   onNew: () => void;
@@ -52,6 +72,7 @@ export function Home({
   // Bumped when Settings backs up or restores, so the backup reminder
   // re-reads its status rather than showing a stale count.
   const [nudgeKey, setNudgeKey] = useState(0);
+  const [surface, setSurface] = useState<Surface>(pickSurface);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsView, setSettingsView] = useState<'settings' | 'help'>('settings');
 
@@ -125,7 +146,7 @@ export function Home({
       <InstallPrompt />
 
       {/* Home already offers Install above. The prompt's own button would be a second one. */}
-      <KeepRoundsPrompt key={nudgeKey} offerInstall={false} />
+      {surface === 'backup' && <KeepRoundsPrompt key={nudgeKey} offerInstall={false} />}
 
       {rounds.length === 0 && (
         <div className="empty-state">
@@ -173,7 +194,9 @@ export function Home({
         </section>
       )}
 
-      <HomeScreenTip hasRounds={rounds.length > 0} />
+      {/* In the flow under the rounds (or the empty state), never a banner above them. */}
+      {surface === 'home-screen' && <HomeScreenCard hasRounds={rounds.length > 0} />}
+      {surface === 'tip' && <HomeScreenTip />}
 
       {showSettings && (
         <SettingsSheet
@@ -185,6 +208,7 @@ export function Home({
           onDataChanged={() => {
             setRounds(listRounds());
             setNudgeKey((k) => k + 1);
+            setSurface(pickSurface());
           }}
         />
       )}
