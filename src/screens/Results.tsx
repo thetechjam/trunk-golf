@@ -18,6 +18,7 @@ import { Awards } from '../components/Awards';
 import { formatRoundDate, formatRoundDateAbsolute } from '../roundDate';
 import { count } from '../plural';
 import { KeepRoundsPrompt } from '../components/KeepRoundsPrompt';
+import { holdHomeScreenCard } from '../homeScreenHold';
 import { ScrambleBoard } from '../components/ScrambleBoard';
 import { isScramble, scrambleSummaryLines } from '../games/scramble';
 import { winnerHero } from '../winnerHero';
@@ -32,6 +33,11 @@ interface Props {
   onKeep?: () => void;
   /** Opens the trip this round is part of. */
   onTrip?: (tripId: string) => void;
+  /**
+   * True only for the round finished on this visit. The backup card is asked
+   * once, there, rather than on every finished round opened from the history.
+   */
+  justFinished?: boolean;
 }
 
 function buildSummary(round: Round): string {
@@ -96,7 +102,16 @@ function buildSummary(round: Round): string {
   return lines.join('\n');
 }
 
-export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep, onTrip }: Props) {
+export function Results({
+  round,
+  onChange,
+  onHome,
+  onBackToPlay,
+  unkept,
+  onKeep,
+  onTrip,
+  justFinished,
+}: Props) {
   const [showHcp, setShowHcp] = useState(false);
   const [sharing, setSharing] = useState(false);
   const results = activeResults(round).map((r) => asScrambleResult(round, r));
@@ -109,6 +124,19 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
     const p = round.players.find((q) => q.id === id);
     return usesHandicaps(round) && p ? courseHandicapFor(round, p) : undefined;
   };
+  // Nothing sits above the result: the backup question comes after who pays
+  // whom, which is what the screen is opened for. Once it is answered, Home
+  // holds the Home Screen card back until the next launch — two asks in a
+  // minute is one too many.
+  const keepPrompt =
+    justFinished && !unkept && round.status === 'finished' ? (
+      <KeepRoundsPrompt onAnswered={holdHomeScreenCard} />
+    ) : null;
+  // One scramble team has no one to settle with, so there is no settle-up for
+  // the card to follow. A scramble has no awards either (see awards.ts), so
+  // "below the awards" would still be straight under the hero: it goes after
+  // the boards instead, before Share, as on a league night.
+  const settles = !(scramble && round.players.length < 2);
 
   return (
     <div className="screen results">
@@ -123,8 +151,6 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
           Home
         </button>
       </header>
-
-      {!unkept && round.status === 'finished' && <KeepRoundsPrompt />}
 
       {unkept && (
         <div className="unkept" role="status">
@@ -182,13 +208,14 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
               onSetHandicap={(id, n) => onChange(setFirstNightHandicap(round, id, n))}
             />
           </section>
+          {keepPrompt}
         </>
       ) : (
         <>
           {/* Who pays whom is the part people act on, so it comes straight
               under the hero, above the fold on a phone; the awards follow.
               One scramble team has no one to settle with. */}
-          {!(scramble && round.players.length < 2) && (
+          {settles && (
             <Settlement
               round={round}
               onChange={onChange}
@@ -205,6 +232,7 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
               <span aria-hidden="true">›</span>
             </button>
           )}
+          {settles && keepPrompt}
           <Awards round={round} />
           <section className="boards">
             {results.map((r) => (
@@ -217,6 +245,7 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
             ))}
             {scramble && <ScrambleBoard round={round} />}
           </section>
+          {!settles && keepPrompt}
         </>
       )}
 

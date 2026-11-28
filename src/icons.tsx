@@ -90,6 +90,21 @@ export const ShareIcon = ({ size = 18, className }: IconProps) => (
   </svg>
 );
 
+/** Plus in a rounded square — iOS's "Add to Home Screen" menu item. */
+export const AddSquareIcon = ({ size = 18, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="3.5" y="3.5" width="17" height="17" rx="4" />
+    <path d="M12 8v8M8 12h8" />
+  </svg>
+);
+
+/** A tick — something is done. */
+export const CheckIcon = ({ size = 18, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <path d="M4.5 12.5l5 5L19.5 7" />
+  </svg>
+);
+
 /** Open eye — the screen stays awake. */
 export const EyeIcon = ({ size = 18, className }: IconProps) => (
   <svg {...base(size)} className={className}>

@@ -15,10 +15,86 @@
   font-size: var(--fs-sm);
   line-height: 1.4;
 }
+/* The card's heading: the weight and size of the <strong> it replaced, not
+   the browser's h2. */
+.keep-rounds .keep-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+}
+/* "Backup saved": the line that says the job is done, so it reads like a
+   heading, with the tick in the under-par green. Overrides `.keep-rounds p`. */
+.keep-rounds .keep-saved {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 700;
+}
+.keep-saved svg {
+  flex: none;
+  color: var(--under-ink);
+}
+.keep-saved:focus {
+  outline: none;
+}
+.keep-saved:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .keep-rounds-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+.keep-rounds-actions.end {
+  justify-content: flex-end;
+}
+/* On Results the card sits between the settle-up and the awards; the
+   screen's own gap spaces it, the same as the cards around it. */
+.results .keep-rounds {
+  margin: 0;
+}
+/* Home's first-open card in a Safari tab: green, not gold — it is a how-to,
+   not a warning. */
+.home-screen-card {
+  border-left-color: var(--green-600);
+}
+/* Share, then Add to Home Screen: a numbered list of instructions with the
+   icon to look for inline. Plain text on the card — no tile, border or fill —
+   so nothing here reads as a button to tap. Same list shape as `.moved-steps`
+   below, in ink rather than muted: these are the steps, not a footnote. */
+.a2hs-steps {
+  margin: 0 0 10px;
+  padding-left: 1.4em;
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.a2hs-step::marker {
+  color: var(--muted);
+}
+.a2hs-step + .a2hs-step {
+  margin-top: 4px;
+}
+.a2hs-step svg {
+  vertical-align: -4px;
+  margin-right: 6px;
+}
+/* Focus moves here when "Show me how" reveals the steps. */
+.a2hs-steps:focus {
+  outline: none;
+}
+.a2hs-steps:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 .keep-rounds .install-btn {
   margin: 0 0 10px;
