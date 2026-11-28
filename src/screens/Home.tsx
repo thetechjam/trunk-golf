@@ -10,6 +10,7 @@ import { activeTrip } from '../trips';
 import { liveRound } from '../roundSummary';
 import { FlagIcon, TrunkMark, TrophyIcon, GearIcon, ChartIcon, ScrambleIcon } from '../icons';
 import { SettingsSheet } from '../components/SettingsSheet';
+import { Walkthrough } from '../components/Walkthrough';
 import { KeepRoundsPrompt, keepRoundsPromptDue } from '../components/KeepRoundsPrompt';
 import { MovedNotice } from '../components/MovedNotice';
 import { BringRoundsOver } from '../components/BringRoundsOver';
@@ -75,6 +76,7 @@ export function Home({
   const [surface, setSurface] = useState<Surface>(pickSurface);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsView, setSettingsView] = useState<'settings' | 'help'>('settings');
+  const [showWalk, setShowWalk] = useState(false);
 
   const openHelp = () => {
     setSettingsView('help');
@@ -130,15 +132,37 @@ export function Home({
         <button className={live ? 'btn-secondary big' : 'btn-primary big'} onClick={onNew}>
           Start New Round
         </button>
-        {/* The visible word is in the name, so voice control still finds it. */}
-        <button className="btn-secondary big home-league" onClick={onNewLeague} aria-label="Golf League">
-          <TrophyIcon size={20} />
-          League
+        {/* The visible word is in the name, so voice control still finds it.
+            The line under it says what the format is and is the button's
+            description, not part of its name. */}
+        <button
+          className="btn-secondary big home-league"
+          onClick={onNewLeague}
+          aria-label="Golf League"
+          aria-describedby="home-league-sub"
+        >
+          <span className="home-action-main">
+            <TrophyIcon size={20} />
+            League
+          </span>
+          <span className="home-action-sub" id="home-league-sub">
+            Team points, season standings
+          </span>
         </button>
         {onNewScramble && (
-          <button className="btn-secondary big home-league" onClick={onNewScramble}>
-            <ScrambleIcon size={20} />
-            Scramble
+          <button
+            className="btn-secondary big home-league"
+            onClick={onNewScramble}
+            aria-label="Scramble"
+            aria-describedby="home-scramble-sub"
+          >
+            <span className="home-action-main">
+              <ScrambleIcon size={20} />
+              Scramble
+            </span>
+            <span className="home-action-sub" id="home-scramble-sub">
+              Teams, one ball
+            </span>
           </button>
         )}
       </div>
@@ -155,7 +179,7 @@ export function Home({
           </div>
           <p className="empty-title">No rounds yet</p>
           <p className="empty-sub">Start your first round and Trunk keeps score for you.</p>
-          <button className="btn-ghost empty-help" onClick={openHelp}>
+          <button className="btn-ghost empty-help" onClick={() => setShowWalk(true)}>
             New here? See how it works ›
           </button>
           {/* An empty Home Screen app on Apple devices: the rounds may be in Safari. */}
@@ -197,6 +221,20 @@ export function Home({
       {/* In the flow under the rounds (or the empty state), never a banner above them. */}
       {surface === 'home-screen' && <HomeScreenCard hasRounds={rounds.length > 0} />}
       {surface === 'tip' && <HomeScreenTip />}
+
+      {showWalk && (
+        <Walkthrough
+          onClose={() => setShowWalk(false)}
+          onStart={() => {
+            setShowWalk(false);
+            onNew();
+          }}
+          onRules={() => {
+            setShowWalk(false);
+            openHelp();
+          }}
+        />
+      )}
 
       {showSettings && (
         <SettingsSheet

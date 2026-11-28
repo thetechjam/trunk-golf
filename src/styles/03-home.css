@@ -352,6 +352,83 @@
   font-size: var(--fs-md);
 }
 
+/* ---------- How Trunk works (three cards from "New here?") ---------- */
+.walk {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+/* One height for all three cards, so the sheet does not jump as they change
+   and Back/Next stay under the thumb. */
+.walk-card {
+  text-align: center;
+  min-height: 13.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.walk-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--green-ink);
+  background: color-mix(in srgb, var(--green-500) 10%, var(--card));
+}
+.walk-step {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  margin: 14px 0 2px;
+}
+.walk-title {
+  margin: 0 0 6px;
+}
+.walk-text {
+  font-size: var(--fs-lg);
+  margin: 0;
+  max-width: 30ch;
+  text-wrap: balance;
+}
+.walk-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.walk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+}
+.walk-dot.on {
+  background: var(--green-ink);
+}
+.walk-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.walk-actions > button {
+  min-height: var(--tap);
+}
+.walk-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.walk-links > a,
+.walk-links > .walk-rules {
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--green-ink);
+  text-decoration: none;
+}
+
 /* Start New Round and League on one row: the round is the everyday action and
    takes the width, League is a compact tile beside it. */
 .home-actions {
@@ -378,7 +455,31 @@
   grid-column: 1 / -1;
 }
 .home-actions.three .btn-secondary.big.home-league {
-  flex-direction: row;
-  gap: 8px;
+  /* A column in both layouts now: the word and its icon on one line, what
+     the format is on the line under it. */
+  flex-direction: column;
+  gap: 2px;
   padding: 10px 12px;
+}
+.home-action-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* What the format is, in plain body text under the button's word — the
+   body's own stack (01-base.css), since the button sets the display face. */
+.home-action-sub {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  line-height: 1.25;
+  text-wrap: balance;
+}
+/* Beside Start New Round (no Scramble), the tile is sized by its content;
+   held narrow so the descriptor wraps rather than squeezing the primary. */
+.home-actions:not(.three) .home-action-sub {
+  max-width: 8rem;
 }
