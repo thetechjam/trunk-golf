@@ -33,7 +33,7 @@ const league = (id: string): Round => {
 };
 
 describe('playAgainRound', () => {
-  it('offers the newest finished everyday round', () => {
+  it('offers the newest finished regular round', () => {
     expect(playAgainRound([done('a'), done('b')], NOW)?.id).toBe('a');
   });
 
@@ -81,6 +81,15 @@ describe('playAgainLines', () => {
     const r = done('a', { games: ['nassau', 'skins'] });
     r.options.stakes = { skins: 2.5, wolf: 10 };
     expect(playAgainLines(r).games).toBe('$2.50 Skins');
+  });
+
+  it('leaves out a course New Round could not load: a round neither nine nor eighteen holes', () => {
+    const seven = done('a', { course: 'Sunset Ridge' });
+    seven.holes = seven.holes.slice(0, 7);
+    expect(playAgainLines(seven).who).toBe('Mike, Dave, Chris & Tom');
+    const nine = done('b', { course: 'Sunset Ridge' });
+    nine.holes = nine.holes.slice(0, 9);
+    expect(playAgainLines(nine).who).toBe('Sunset Ridge · Mike, Dave, Chris & Tom');
   });
 
   it('reads two players as a pair', () => {

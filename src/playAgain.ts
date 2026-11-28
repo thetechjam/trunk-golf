@@ -5,7 +5,7 @@ import { isScramble } from './games/scramble';
 import { crewNames, liveRound } from './roundSummary';
 
 /**
- * The round Home offers to play again, if any: the newest finished everyday
+ * The round Home offers to play again, if any: the newest finished regular
  * round — not a league night or a scramble, which have their own setup
  * screens — with games on it and somebody named on the card.
  *
@@ -33,9 +33,15 @@ export function playAgainRound(rounds: Round[], now = Date.now()): Round | null 
  * and what for ("$5 Nassau · $2 Skins", or "Nassau, Skins" with nothing
  * riding on it). Stakes are read only for games on the round: a game dropped
  * at setup can leave its stake behind in the options.
+ *
+ * The course is named only when New Round can load it — a nine or an
+ * eighteen (see `courseStateFromRound`); a round of another length, which
+ * can arrive by link, would promise a course that opens as "Not set".
  */
 export function playAgainLines(round: Round): { who: string; games: string } {
-  const who = [round.course?.trim(), crewNames(round.players.map((p) => p.name))]
+  const n = round.holes.length;
+  const course = n === 9 || n === 18 ? round.course?.trim() : undefined;
+  const who = [course, crewNames(round.players.map((p) => p.name))]
     .filter(Boolean)
     .join(' · ');
   const stakes = round.options.stakes ?? {};
