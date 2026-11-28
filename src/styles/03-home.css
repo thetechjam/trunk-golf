@@ -475,8 +475,9 @@
   text-wrap: balance;
 }
 /* "2-on-2" is one term: kept whole so a narrow tile never breaks it at a
-   hyphen ("A weekly 2-" / "on-2 night"). Measured: at 360px and 390px both
-   sub-lines sit on one line; at 320px both wrap to two lines, League as
+   hyphen ("A weekly 2-" / "on-2 night"). Measured after "best shot": at
+   390px both sub-lines sit on one line; at 360px League sits on one line
+   and Scramble wraps to two; at 320px both wrap to two lines, League as
    "A weekly" / "2-on-2 night". */
 .home-action-keep {
   white-space: nowrap;
