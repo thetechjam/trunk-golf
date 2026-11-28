@@ -909,9 +909,10 @@
 }
 /* A selected tile's stake, on a second line under the name. The tiles stay
    two-across (a full-width selected tile would move the targets under the
-   thumb), so the inner width is ~137px at 390 and ~102px at 320: "$", the
-   field and a short unit share a line and a long unit ("per low round")
-   wraps under them. The grid stretches rows, so paired tiles stay level. */
+   thumb), so the inner width is ~137px at 390 and ~102px at 320. With the
+   56px field and the unit at --fs-sm, "$ [field] per skin" comes to ~125px:
+   a short unit shares the field's line at 390, and wraps under it at 320, as
+   a long unit ("per low round") does everywhere. */
 .game-stake {
   display: flex;
   flex-wrap: wrap;
@@ -923,15 +924,27 @@
 .game-stake .dollar,
 .game-stake .per {
   color: var(--muted);
+}
+.game-stake .dollar {
   font-size: var(--fs-md);
 }
-/* 44px tall at the inherited 16px, so iOS does not zoom on focus. The
-   border is ink-derived like .recent-chip's, for the same reason: --line is
-   1.74:1 in glare, and this sits on the tinted active tile. */
+.game-stake .per {
+  font-size: var(--fs-sm);
+}
+/* The grid stretches a row to its taller tile, and a picked tile is ~54px
+   taller than an unpicked one. Centred, the unpicked neighbour's tick and
+   name would sit ~30px lower than the picked tile's; top-aligned they line up. */
+.game-list .game-card {
+  justify-content: flex-start;
+}
+/* 44px tall at the inherited 16px, so iOS does not zoom on focus; 56px wide
+   still shows four digits. The border is ink-derived like .recent-chip's, for
+   the same reason: --line is 1.74:1 in glare, and this sits on the tinted
+   active tile. */
 .game-stake input {
-  width: 64px;
+  width: 56px;
   min-height: 44px;
-  padding: 8px;
+  padding: 8px 6px;
   text-align: right;
   font-variant-numeric: tabular-nums;
   background: var(--bg);
