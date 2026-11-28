@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { DownloadIcon } from '../icons';
 import { requestPersistentStorage } from '../persistence';
-import { installSteps, storageRisk } from '../platform';
+import { isIOS, storageRisk } from '../platform';
+import { getSettings, saveSettings } from '../storage';
+import { AddToHomeSteps } from './AddToHomeSteps';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
-
-export { isInstalled } from '../platform';
 
 /**
  * Shows an "Install" button on browsers that support it (Android/Chrome/Edge).
@@ -53,22 +53,66 @@ export function InstallPrompt() {
 }
 
 /**
- * Home's standing tip. Where Safari clears a tab's data after seven days, it
- * says how to stop that, and that the home screen app starts empty when there
- * is something to bring over. Installed and native need no tip at all.
+ * Home's first-open card in a Safari tab, where a site's saved rounds can be
+ * cleared after a week away and the home screen app is what keeps them.
+ * Due until "Got it" is tapped once; Home decides whether it is the one
+ * message on screen.
  */
-export function HomeScreenTip({ hasRounds }: { hasRounds: boolean }) {
-  const risk = storageRisk();
-  if (risk === 'installed' || risk === 'native') return null;
-  if (risk === 'browser') {
-    return <p className="hint">Tip: add Trunk to your home screen for one-tap access on the course.</p>;
-  }
-  const steps = installSteps();
+export function homeScreenCardDue(): boolean {
+  return storageRisk() === 'evicting' && !getSettings().installTipDismissed;
+}
+
+/**
+ * The card itself: why, and the two taps drawn out. With rounds already saved
+ * it says to back up first, because the home screen app starts empty and the
+ * backup is how they get there.
+ *
+ * "Got it" stores the answer. A refused write still hides the card for this
+ * visit; it comes back next launch, which is the honest outcome of an answer
+ * that could not be kept.
+ */
+export function HomeScreenCard({ hasRounds }: { hasRounds: boolean }) {
+  const [visible, setVisible] = useState(homeScreenCardDue);
+  if (!visible) return null;
+
+  // Desktop Safari keeps an installed site in the Dock, not on a home screen.
+  const place = isIOS() ? 'Home Screen' : 'Dock';
+  const dismiss = () => {
+    saveSettings({ installTipDismissed: true });
+    setVisible(false);
+  };
+
   return (
-    <p className="hint">
-      Tip: add Trunk to your home screen, so Safari keeps your rounds.
-      {hasRounds && ' Back up first — the home screen app starts empty.'}
-      {steps && ` ${steps}`}
-    </p>
+    <section className="keep-rounds home-screen-card" aria-labelledby="home-screen-card-title">
+      <h2 className="keep-title" id="home-screen-card-title">
+        Add Trunk to your {place}
+      </h2>
+      <p>
+        Safari can clear a site’s saved rounds after a week away.{' '}
+        {place === 'Dock' ? 'In your Dock' : 'On your Home Screen'}, Trunk keeps them.
+      </p>
+      {hasRounds && (
+        <p>
+          Save a backup first (Settings → Back up your rounds). The {place} app starts empty, and
+          you restore the backup there.
+        </p>
+      )}
+      <AddToHomeSteps />
+      <div className="keep-rounds-actions end">
+        <button type="button" className="btn-ghost" onClick={dismiss}>
+          Got it
+        </button>
+      </div>
+    </section>
   );
+}
+
+/**
+ * Home's grey one-liner, for browsers with no seven-day rule to warn about.
+ * A Safari tab gets `HomeScreenCard` instead; installed and native need no
+ * tip at all.
+ */
+export function HomeScreenTip() {
+  if (storageRisk() !== 'browser') return null;
+  return <p className="hint">Tip: add Trunk to your home screen for one-tap access on the course.</p>;
 }
