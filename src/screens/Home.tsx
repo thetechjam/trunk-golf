@@ -303,7 +303,7 @@ function StartSomethingElse({ live, onNewTrip, onNewScramble, onNewLeague }: Mor
             />
           )}
           <MoreRow
-            id="home-league-sub"
+            id="home-golf-league-sub"
             label="Golf League"
             icon={<TrophyIcon size={20} />}
             name="League"
