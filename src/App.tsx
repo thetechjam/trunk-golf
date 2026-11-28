@@ -79,7 +79,8 @@ export default function App() {
    * The round finished on this visit, if any. Results asks about a backup
    * only right after Finish — not every time an old round is opened — so the
    * question comes once, below the settle-up, when it is relevant. Cleared by
-   * load(), so opening any round from Home, History or a trip never shows it.
+   * load() and by Results' Home button, so opening any round from Home,
+   * History or a trip — or coming Back to Results from Home — never shows it.
    */
   const [justFinishedId, setJustFinishedId] = useState<string | null>(null);
   /**
@@ -597,7 +598,10 @@ export default function App() {
         <Results
           round={round}
           onChange={update}
-          onHome={() => goTo('home')}
+          onHome={() => {
+            setJustFinishedId(null);
+            goTo('home');
+          }}
           onBackToPlay={() => nav.replace('play')}
           unkept={unkept}
           onKeep={keep}

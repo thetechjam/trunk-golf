@@ -97,3 +97,53 @@ describe('two teams', () => {
     expect(document.querySelector('.results-sub')!.textContent).toContain('2 teams');
   });
 });
+
+/**
+ * One team has no settle-up for the backup card to follow, and a scramble has
+ * no awards, so it does not sit straight under the hero: it comes after the
+ * boards, before Share.
+ */
+describe('the backup card on a one-team scramble', () => {
+  const follows = (a: Element, b: Element) =>
+    !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+  const showJustFinished = (round: Round) => {
+    // The card asks about rounds on this device, so the round has to be kept,
+    // and changed since the (absent) last backup.
+    localStorage.setItem('press.rounds.v1', JSON.stringify([{ ...round, updatedAt: 5 }]));
+    return render(
+      <Results round={round} onChange={() => {}} onHome={() => {}} onBackToPlay={() => {}} justFinished />
+    );
+  };
+  beforeEach(() => localStorage.clear());
+  afterEach(() => localStorage.clear());
+
+  it('comes after the boards, not under the hero, and before Share', () => {
+    const { container } = showJustFinished(one);
+    const card = container.querySelector('.keep-rounds')!;
+    const hero = container.querySelector('.winner-hero')!;
+    const boards = container.querySelector('.boards')!;
+    const share = container.querySelector('.share-open')!;
+    expect(card).toBeTruthy();
+    expect(hero.nextElementSibling).not.toBe(card);
+    expect(follows(boards, card)).toBe(true);
+    expect(follows(card, share)).toBe(true);
+  });
+
+  it('two teams keep it under the settle-up', () => {
+    const two = scrambleRound({
+      teams: [
+        { name: 'Hackers', members: ['Jesse', 'Sam'] },
+        { name: 'Fore Play', members: ['Al', 'Bo'] },
+      ],
+      holes: nine,
+      scores: Object.fromEntries(nine.map((h) => [h.number, { t1: 4, t2: 5 }])),
+      status: 'finished',
+    });
+    const { container } = showJustFinished(two);
+    const card = container.querySelector('.keep-rounds')!;
+    const settlement = container.querySelector('.settlement')!;
+    expect(card && settlement).toBeTruthy();
+    expect(follows(settlement, card)).toBe(true);
+    expect(follows(card, container.querySelector('.boards')!)).toBe(true);
+  });
+});

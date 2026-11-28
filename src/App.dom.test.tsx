@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, waitFor } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App';
 import type { Round } from './types';
@@ -9,6 +9,7 @@ import { setBackend, snapshotBackend } from './kv';
 import { getSettings, saveSettings, skipKeepPromptIfRoundsExist } from './storage';
 import { buildBackup } from './backup';
 import * as platform from './platform';
+import { releaseHomeScreenCard } from './homeScreenHold';
 
 /**
  * Navigation and the hardware back button.
@@ -95,6 +96,8 @@ beforeEach(() => {
   localStorage.clear();
   // Each test starts from a clean entry so depth counting starts at zero.
   history.replaceState(null, '', '/');
+  // Each test is a fresh app session: nothing held from the one before.
+  releaseHomeScreenCard();
 });
 
 afterEach(cleanup);
@@ -587,6 +590,29 @@ describe('the prompt after the first finished round', () => {
     expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
   });
 
+  it('does not ask again when Forward returns to Results from Home', async () => {
+    seed([finished()]);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByText('Test Links'));
+    await user.click(await screen.findByRole('button', { name: 'Finish' }));
+    expect(await screen.findByRole('heading', { name: 'Results' })).toBeTruthy();
+    expect(card()).toBeTruthy();
+
+    // Left unanswered: Home carries it from here…
+    await user.click(screen.getByRole('button', { name: 'Home' }));
+    expect(onHome()).toBe(true);
+    expect(card()).toBeTruthy();
+
+    // …and the browser's Forward back to Results does not ask a second time.
+    // (Home collapses the history it pushed, so Back leaves; Forward is the
+    // way back to that Results entry.)
+    history.forward();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Results' })).toBeTruthy());
+    expect(screen.getByRole('heading', { name: 'Results' })).toBeTruthy();
+    expect(card()).toBeNull();
+  });
+
   it('does not ask on Results when a finished round is opened from Home', async () => {
     seed([round({ status: 'finished' })]);
     const user = userEvent.setup();
@@ -753,6 +779,77 @@ describe('Home in a Safari tab', () => {
     expect(backupCard()).toBeTruthy();
     expect(homeCard()).toBeNull();
     expect(tip()).toBeNull();
+  });
+
+  /** Plays the seeded round to Finish and waits for Results with its card. */
+  const finishRound = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(screen.getByText('Test Links'));
+    await user.click(await screen.findByRole('button', { name: 'Finish' }));
+    expect(await screen.findByRole('heading', { name: 'Results' })).toBeTruthy();
+    expect(backupCard()).toBeTruthy();
+  };
+  const playable = () =>
+    round({ scores: Object.fromEntries(hs.map((h) => [h.number, { p1: 4, p2: 5 }])) });
+
+  it('after “Not now” on Results, Home holds the Home Screen card until the next launch', async () => {
+    seed([playable()]);
+    const user = userEvent.setup();
+    const view = render(<App />);
+    await finishRound(user);
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
+    // Focus goes to the screen heading, not <body>.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Results' }));
+
+    await user.click(screen.getByRole('button', { name: 'Home' }));
+    expect(onHome()).toBe(true);
+    expect(homeCard()).toBeNull();
+    expect(backupCard()).toBeNull();
+    expect(tip()).toBeNull();
+    // Held in memory only: nothing stored.
+    expect(getSettings().installTipDismissed).toBe(false);
+
+    // The next launch is a new session, and the card is back.
+    view.unmount();
+    releaseHomeScreenCard();
+    render(<App />);
+    expect(homeCard()).toBeTruthy();
+  });
+
+  it('after a backup and Done on Results, Home holds it too; next launch says restore it there', async () => {
+    seed([playable()]);
+    const user = userEvent.setup();
+    const view = render(<App />);
+    await finishRound(user);
+    await user.click(screen.getByRole('button', { name: 'Save a backup' }));
+    const saved = await screen.findByText('Backup saved');
+    await user.click(within(saved.closest('.keep-rounds') as HTMLElement).getByRole('button', { name: 'Done' }));
+
+    await user.click(screen.getByRole('button', { name: 'Home' }));
+    expect(homeCard()).toBeNull();
+
+    view.unmount();
+    releaseHomeScreenCard();
+    render(<App />);
+    expect(homeCard()).toBeTruthy();
+    expect(
+      screen.getByText('Your backup is saved. The Home Screen app starts empty, so restore it there.')
+    ).toBeTruthy();
+    expect(screen.queryByText(/Save a backup first/)).toBeNull();
+  });
+
+  it('a Results card left unanswered holds nothing back', async () => {
+    seed([playable()]);
+    const user = userEvent.setup();
+    const view = render(<App />);
+    await finishRound(user);
+    await user.click(screen.getByRole('button', { name: 'Home' }));
+    // Still due, so the backup card has Home's one slot…
+    expect(backupCard()).toBeTruthy();
+    // …and answered there, the Home Screen card is not held for the next visit.
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
+    view.unmount();
+    render(<App />);
+    expect(homeCard()).toBeTruthy();
   });
 
   it('shows neither after Got it, on the next visit too', async () => {

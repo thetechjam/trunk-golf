@@ -18,6 +18,7 @@ import { Awards } from '../components/Awards';
 import { formatRoundDate, formatRoundDateAbsolute } from '../roundDate';
 import { count } from '../plural';
 import { KeepRoundsPrompt } from '../components/KeepRoundsPrompt';
+import { holdHomeScreenCard } from '../homeScreenHold';
 import { ScrambleBoard } from '../components/ScrambleBoard';
 import { isScramble, scrambleSummaryLines } from '../games/scramble';
 import { winnerHero } from '../winnerHero';
@@ -124,8 +125,18 @@ export function Results({
     return usesHandicaps(round) && p ? courseHandicapFor(round, p) : undefined;
   };
   // Nothing sits above the result: the backup question comes after who pays
-  // whom, which is what the screen is opened for.
-  const keepPrompt = justFinished && !unkept && round.status === 'finished' ? <KeepRoundsPrompt /> : null;
+  // whom, which is what the screen is opened for. Once it is answered, Home
+  // holds the Home Screen card back until the next launch — two asks in a
+  // minute is one too many.
+  const keepPrompt =
+    justFinished && !unkept && round.status === 'finished' ? (
+      <KeepRoundsPrompt onAnswered={holdHomeScreenCard} />
+    ) : null;
+  // One scramble team has no one to settle with, so there is no settle-up for
+  // the card to follow. A scramble has no awards either (see awards.ts), so
+  // "below the awards" would still be straight under the hero: it goes after
+  // the boards instead, before Share, as on a league night.
+  const settles = !(scramble && round.players.length < 2);
 
   return (
     <div className="screen results">
@@ -204,7 +215,7 @@ export function Results({
           {/* Who pays whom is the part people act on, so it comes straight
               under the hero, above the fold on a phone; the awards follow.
               One scramble team has no one to settle with. */}
-          {!(scramble && round.players.length < 2) && (
+          {settles && (
             <Settlement
               round={round}
               onChange={onChange}
@@ -221,7 +232,7 @@ export function Results({
               <span aria-hidden="true">›</span>
             </button>
           )}
-          {keepPrompt}
+          {settles && keepPrompt}
           <Awards round={round} />
           <section className="boards">
             {results.map((r) => (
@@ -234,6 +245,7 @@ export function Results({
             ))}
             {scramble && <ScrambleBoard round={round} />}
           </section>
+          {!settles && keepPrompt}
         </>
       )}
 

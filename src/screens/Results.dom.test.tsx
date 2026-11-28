@@ -4,6 +4,7 @@ import { render, screen, cleanup, waitFor, within } from '@testing-library/react
 import userEvent from '@testing-library/user-event';
 import type { Round } from '../types';
 import { Results } from './Results';
+import { homeScreenCardHeld, releaseHomeScreenCard } from '../homeScreenHold';
 
 /**
  * The foot of the Results screen.
@@ -226,6 +227,15 @@ describe('the backup card', () => {
       container.querySelector('header.bar')
     );
     expect(container.querySelector('.winner-hero')!.nextElementSibling).toBe(settlement);
+  });
+
+  it('once answered, holds the Home Screen card back for the session', async () => {
+    releaseHomeScreenCard();
+    showFinished({ justFinished: true });
+    expect(homeScreenCardHeld()).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(homeScreenCardHeld()).toBe(true);
+    releaseHomeScreenCard();
   });
 
   it('is not shown on a round that is not kept on this device', () => {
