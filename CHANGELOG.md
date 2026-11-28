@@ -148,7 +148,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and Next or a sideways swipe, with the 80-second video and a link to the
   full rules. The last card's "Start a round" goes straight to New Round.
 - **One-line descriptions under League and Scramble on Home**: "A weekly 2-on-2
-  night" and "Everyone hits, best ball". The buttons keep their names.
+  night" and "Everyone hits, best shot". The buttons keep their names.
 - **A note on New Round when handicaps are in play and the course has no
   stroke indexes**: the strokes would fall in hole order, and tapping the
   note opens the course, or Holes & pars, to set them.
