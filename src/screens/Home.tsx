@@ -161,7 +161,7 @@ export function Home({
               Scramble
             </span>
             <span className="home-action-sub" id="home-scramble-sub">
-              Everyone hits, best ball
+              Everyone hits, best shot
             </span>
           </button>
         )}
