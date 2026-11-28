@@ -49,4 +49,12 @@ describe('the stake fields', () => {
     await user.type(field, '3');
     expect(field.value).toBe('3');
   });
+
+  it('keep the accessible name the Money row has always had', () => {
+    render(<Harness seen={[]} />);
+    // The label's text runs together ("Skins$per skin"); what matters is that
+    // it is still named by the game, the $ and the unit, unlike a tile field.
+    expect(screen.getByRole('spinbutton').getAttribute('aria-label')).toBeNull();
+    expect(screen.getByLabelText(/^Skins\s*\$\s*per skin$/)).toBeTruthy();
+  });
 });
