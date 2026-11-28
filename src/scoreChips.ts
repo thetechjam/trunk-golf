@@ -3,7 +3,7 @@
  * each. Pure so the range and clear-on-retap rules are testable without a DOM.
  */
 
-/** Lowest and highest score the overflow grid offers. Matches `clampScore`. */
+/** Lowest and highest score a round can hold. */
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 15;
 
