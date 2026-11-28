@@ -70,6 +70,9 @@ describe('settings', () => {
       firstFinishPromptDismissed: false,
       lastBackupAt: null,
       backupNudgeSnoozedAt: null,
+      installTipDismissed: false,
+      backupNudgeSnoozeCount: 0,
+      backupRemindersOff: false,
     });
   });
 
@@ -159,6 +162,91 @@ describe('settings', () => {
     } finally {
       parse.mockRestore();
     }
+  });
+
+  it('defaults the install tip, snooze count and reminders-off fields', () => {
+    expect(getSettings()).toMatchObject({
+      installTipDismissed: false,
+      backupNudgeSnoozeCount: 0,
+      backupRemindersOff: false,
+    });
+  });
+
+  it('reads settings written before the install tip and reminder fields existed', () => {
+    store.set(
+      'press.settings.v1',
+      JSON.stringify({ keepAwake: false, firstFinishPromptDismissed: true, backupNudgeSnoozedAt: 1_700_000_000_000 })
+    );
+    expect(getSettings()).toMatchObject({
+      keepAwake: false,
+      firstFinishPromptDismissed: true,
+      backupNudgeSnoozedAt: 1_700_000_000_000,
+      installTipDismissed: false,
+      backupNudgeSnoozeCount: 0,
+      backupRemindersOff: false,
+    });
+  });
+
+  it('keeps installTipDismissed across an unrelated save', () => {
+    saveSettings({ installTipDismissed: true });
+    saveSettings({ keepAwake: false });
+    expect(getSettings().installTipDismissed).toBe(true);
+  });
+
+  it('keeps backupNudgeSnoozeCount across an unrelated save', () => {
+    saveSettings({ backupNudgeSnoozeCount: 2 });
+    saveSettings({ theme: 'dark' });
+    expect(getSettings().backupNudgeSnoozeCount).toBe(2);
+  });
+
+  it('keeps backupRemindersOff across an unrelated save', () => {
+    saveSettings({ backupRemindersOff: true });
+    saveSettings({ reporterName: 'Bo' });
+    expect(getSettings().backupRemindersOff).toBe(true);
+  });
+
+  it('stores a 0 snooze count and a false reminders-off rather than keeping the old values', () => {
+    saveSettings({ backupNudgeSnoozeCount: 2, backupRemindersOff: true, installTipDismissed: true });
+    saveSettings({ backupNudgeSnoozeCount: 0, backupRemindersOff: false });
+    expect(getSettings()).toMatchObject({
+      backupNudgeSnoozeCount: 0,
+      backupRemindersOff: false,
+      installTipDismissed: true,
+    });
+  });
+
+  it.each([
+    ['a string', '2'],
+    ['a negative number', -1],
+    ['a fraction', 1.5],
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+    ['null', null],
+  ])('reads %s stored as the snooze count as 0', (_name, v) => {
+    store.set('press.settings.v1', '{"keepAwake":false}');
+    // As above: JSON cannot carry NaN or Infinity, so the parsed object is handed back.
+    const parse = vi
+      .spyOn(JSON, 'parse')
+      .mockReturnValue({ keepAwake: false, backupNudgeSnoozeCount: v });
+    try {
+      const got = getSettings();
+      expect(got.keepAwake).toBe(false);
+      expect(got.backupNudgeSnoozeCount).toBe(0);
+    } finally {
+      parse.mockRestore();
+    }
+  });
+
+  it.each([
+    ['a string', 'true'],
+    ['a number', 1],
+    ['null', null],
+  ])('reads %s stored as a boolean flag as false', (_name, v) => {
+    store.set(
+      'press.settings.v1',
+      JSON.stringify({ installTipDismissed: v, backupRemindersOff: v })
+    );
+    expect(getSettings()).toMatchObject({ installTipDismissed: false, backupRemindersOff: false });
   });
 });
 
