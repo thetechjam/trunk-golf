@@ -1,4 +1,4 @@
-import type { Dispatch } from 'react';
+import { useRef, type Dispatch } from 'react';
 import type { SavedCourse } from '../../types';
 import type { FetchedCourse } from '../../courses/openGolfApi';
 import { CourseSearch } from '../../components/CourseSearch';
@@ -22,13 +22,54 @@ interface CourseProps {
   onRemove: (id: string) => void;
   /** The confirmation for this row, when the last thing done happened here. */
   note: string | null;
+  /**
+   * The remembered course's name while its card (pars, stroke indexes, slope
+   * and rating) is still the one on screen; absent once another card has
+   * replaced it or there was none.
+   */
+  lastCourse?: string;
+  /** Clears the remembered course back to a blank one. */
+  onElsewhere?: () => void;
 }
 
 /** The body of New Round's Course row: the search field and the saved courses. */
-export function CourseSection({ course, onCourse, onPick, onScan, courses, onLoad, onSend, onRemove, note }: CourseProps) {
+export function CourseSection({
+  course,
+  onCourse,
+  onPick,
+  onScan,
+  courses,
+  onLoad,
+  onSend,
+  onRemove,
+  note,
+  lastCourse,
+  onElsewhere,
+}: CourseProps) {
+  const searchInput = useRef<HTMLInputElement>(null);
   return (
     <>
-      <CourseSearch value={course} onChange={onCourse} onPick={onPick} />
+      {lastCourse && onElsewhere && (
+        <p className="hint-inline course-same">
+          {course.trim() === lastCourse
+            ? 'Same course as last time.'
+            : `Pars and ratings are still from ${lastCourse}.`}{' '}
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => {
+              onElsewhere();
+              // The button goes with the note and leaves with it; the search
+              // field, just below, is where the next course is chosen.
+              searchInput.current?.focus();
+            }}
+          >
+            Play somewhere else
+          </button>
+        </p>
+      )}
+
+      <CourseSearch value={course} onChange={onCourse} onPick={onPick} inputRef={searchInput} />
 
       <ScanCard courseName={course} onApply={onScan} />
 

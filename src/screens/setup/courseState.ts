@@ -1,4 +1,4 @@
-import type { Hole, SavedCourse } from '../../types';
+import type { Hole, Round, SavedCourse } from '../../types';
 import { sliceCourseHoles, type FetchedCourse } from '../../courses/openGolfApi';
 import { scorecardIssues, estimatedHoleIssues } from '../../courses/validate';
 import { strokeIndexProblem, type StrokeIndexProblem } from '../../games/strokeIndex';
@@ -112,7 +112,9 @@ export type CourseAction =
       /** Set when the whole card behind a nine was saved, its hole count. */
       wholeCard?: number;
     }
-  | { type: 'clearNote' };
+  | { type: 'clearNote' }
+  /** Back to a blank course: "Play somewhere else" under a remembered one. */
+  | { type: 'reset' };
 
 export function makeHoles(count: number): Hole[] {
   return Array.from({ length: count }, (_, i) => ({ number: i + 1, par: 4 }));
@@ -349,7 +351,65 @@ export function courseReducer(state: CourseState, action: CourseAction): CourseS
 
     case 'clearNote':
       return { ...state, savedNote: null };
+
+    case 'reset':
+      return initialCourseState;
   }
+}
+
+/**
+ * The course a past round was played on, as New Round's starting state.
+ *
+ * The round's own copy, not the saved course of that name: it is what the
+ * group actually played — the nine, the pars as corrected on the day, the
+ * slope and rating it was handicapped on — and it is there even when the
+ * course was never saved. Loaded quietly: no note, and no "check these"
+ * caveat, because the numbers were vouched for by a round played on them.
+ *
+ * Only a nine or an eighteen: a round of any other length (one that arrived
+ * by link) is not a card New Round can set up, so it starts blank instead.
+ *
+ * A nine keeps the eighteen behind it when a saved course of the same name
+ * has one whose same nine has the same pars — so switching to 18 holes, or
+ * to the other nine, gives that course's card rather than par 4s. A saved
+ * card that disagrees is somewhere else under the same name, and is not used.
+ */
+export function courseStateFromRound(
+  round: Round | null | undefined,
+  saved: SavedCourse[] = []
+): CourseState | null {
+  if (!round) return null;
+  const n = round.holes.length;
+  if (n !== 9 && n !== 18) return null;
+  const holes = round.holes.map((h) => ({ ...h }));
+  const nine = holes[0]?.number === 10 ? 'back' : 'front';
+  const name = round.course?.trim().toLowerCase() ?? '';
+  const card =
+    n === 9 && name
+      ? saved.find((c) => c.name.trim().toLowerCase() === name && c.holes.length >= 18)
+      : undefined;
+  const behind =
+    card &&
+    sliceCourseHoles(card.holes, 9, { nine }).every(
+      (h, i) => h.number === holes[i].number && h.par === holes[i].par
+    )
+      ? sliceCourseHoles(card.holes, 18)
+      : null;
+  return {
+    ...initialCourseState,
+    course: round.course?.trim() ?? '',
+    holeCount: n,
+    holes,
+    slope: round.slope,
+    rating: round.rating,
+    ratingHoles: round.ratingHoles,
+    advancedHoles: holes.some((h) => typeof h.strokeIndex === 'number'),
+    holesSource: 'saved',
+    imported: null,
+    source: n === 18 ? holes.map((h) => ({ ...h })) : behind,
+    nine,
+    savedNote: null,
+  };
 }
 
 /**

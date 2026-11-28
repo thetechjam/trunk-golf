@@ -6,6 +6,8 @@ import { HomeScreenCard, HomeScreenTip, InstallPrompt, homeScreenCardDue } from 
 import { RoundCard } from '../components/RoundCard';
 import { ResumeCard } from '../components/ResumeCard';
 import { TripCard } from '../components/TripCard';
+import { PlayAgainCard } from '../components/PlayAgainCard';
+import { playAgainRound } from '../playAgain';
 import { activeTrip } from '../trips';
 import { liveRound } from '../roundSummary';
 import { FlagIcon, TrunkMark, TrophyIcon, GearIcon, ChartIcon, ScrambleIcon } from '../icons';
@@ -57,6 +59,8 @@ interface Props {
   onStats: () => void;
   onHistory: () => void;
   onTrip?: (tripId: string) => void;
+  /** Opens New Round filled in from this round. Absent, Home offers no Play again. */
+  onPlayAgain?: (round: Round) => void;
 }
 
 export function Home({
@@ -68,6 +72,7 @@ export function Home({
   onStats,
   onHistory,
   onTrip,
+  onPlayAgain,
 }: Props) {
   const [rounds, setRounds] = useState<Round[]>(listRounds);
   // Bumped when Settings backs up or restores, so the backup reminder
@@ -89,6 +94,8 @@ export function Home({
   const rest = live ? rounds.filter((r) => r !== live) : rounds;
   const listed = rest.slice(0, live ? ON_HOME - 1 : ON_HOME);
   const trip = activeTrip(rounds);
+  // Never beside the Resume card: playAgainRound is null while a round is live.
+  const again = onPlayAgain ? playAgainRound(rounds) : null;
 
   return (
     <div className="screen home">
@@ -166,6 +173,10 @@ export function Home({
           </button>
         )}
       </div>
+
+      {/* Part of the launcher, so directly under its tiles and above any
+          message about installing or backing up. */}
+      {again && onPlayAgain && <PlayAgainCard round={again} onPlay={() => onPlayAgain(again)} />}
 
       <InstallPrompt />
 

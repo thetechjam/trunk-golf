@@ -18,6 +18,8 @@ import { seatColor } from '../player';
 import { ChartIcon, XIcon } from '../icons';
 import { MixBar, TrendLine } from '../components/StatCharts';
 import { nameKey } from '../people';
+import { computeSeason, seasonYear } from '../season';
+import { SeasonCard } from '../components/SeasonCard';
 
 interface Props {
   onBack: () => void;
@@ -215,6 +217,17 @@ export function Stats({ onBack }: Props) {
 
   const narrowed = shown.length !== counted.length;
 
+  // Read once per visit: "This season" is the calendar year on the phone.
+  const [thisYear] = useState(() => new Date().getFullYear());
+  // The year's money, under the year picked (or the latest with "All"). Not
+  // while searching: a search narrows to particular rounds, and a season
+  // drawn from those would be a different set of rounds from the season.
+  const season = useMemo(() => {
+    const y = seasonYear(counted, year);
+    return y == null ? null : computeSeason(counted, y);
+  }, [counted, year]);
+  const seasonShown = query.trim() === '' && season && season.moneyRounds > 0 ? season : null;
+
   return (
     <div className="screen stats">
       <header className="bar">
@@ -338,6 +351,14 @@ export function Stats({ onBack }: Props) {
                     );
                     setDistinct(getDistinct());
                   }}
+                />
+              )}
+
+              {seasonShown && (
+                <SeasonCard
+                  season={seasonShown}
+                  current={seasonShown.year === thisYear}
+                  colorFor={(name, i) => seatColor(counted, name, i)}
                 />
               )}
 

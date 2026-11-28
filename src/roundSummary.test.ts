@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Round } from './types';
-import { liveRound, roundTitle, standingLine } from './roundSummary';
+import { crewNames, liveRound, roundTitle, standingLine } from './roundSummary';
 import { makeRound, holes18, player, scoresFrom, scrambleRound } from './games/testFixtures';
 
 const NOW = Date.UTC(2026, 8, 22, 18);
@@ -128,5 +128,57 @@ describe('a scramble', () => {
       stake: 20,
     });
     expect(standingLine(r)?.text).toBe('Jesse & Sam up $20 · Cy & Di down $20');
+  });
+});
+
+describe('crewNames', () => {
+  it('reads one to four players as a list of first names', () => {
+    expect(crewNames(['Mike Smith'])).toBe('Mike');
+    expect(crewNames(['Mike Smith', 'Dave Jones'])).toBe('Mike & Dave');
+    expect(crewNames(['Mike', 'Dave', 'Chris'])).toBe('Mike, Dave & Chris');
+    expect(crewNames(['Mike', 'Dave', 'Chris', 'Tom'])).toBe('Mike, Dave, Chris & Tom');
+  });
+
+  it('counts the rest past four', () => {
+    expect(crewNames(['Mike', 'Dave', 'Chris', 'Tom', 'Al'])).toBe('Mike, Dave & 3 more');
+  });
+
+  it('drops blank names and stray spaces', () => {
+    expect(crewNames(['  Mike  Smith', '', '   ', 'Dave'])).toBe('Mike & Dave');
+    expect(crewNames([])).toBe('');
+  });
+
+  it('joins a pair with what it is given', () => {
+    expect(crewNames(['Mike', 'Dave'], ' v ')).toBe('Mike v Dave');
+  });
+});
+
+describe('roundTitle', () => {
+  const named = (...ns: string[]) => makeRound({ players: ns.map((n, i) => player(`p${i}`, n)) });
+
+  it('is a head to head for two players', () => {
+    expect(roundTitle(named('Mike Smith', 'Dave Jones'))).toBe('Mike v Dave');
+  });
+
+  it('lists a four-ball by first name', () => {
+    expect(roundTitle(named('Mike', 'Dave', 'Chris', 'Tom'))).toBe('Mike, Dave, Chris & Tom');
+  });
+
+  it('counts the rest of a bigger group', () => {
+    expect(roundTitle(named('Mike', 'Dave', 'Chris', 'Tom', 'Al', 'Bo'))).toBe('Mike, Dave & 4 more');
+  });
+
+  it('still puts the course, league night and scramble first', () => {
+    const r = named('Mike', 'Dave', 'Chris');
+    expect(roundTitle({ ...r, course: 'Sunset Ridge' })).toBe('Sunset Ridge');
+    const league: Round['options']['league'] = {
+      teams: [
+        { aId: 'p0', bId: 'p1' },
+        { aId: 'p2', bId: '' },
+      ],
+      pointsPerMatch: 1,
+    };
+    expect(roundTitle({ ...r, options: { ...r.options, league } })).toBe('League night');
+    expect(roundTitle(scrambleRound({}))).toBe('Scramble');
   });
 });

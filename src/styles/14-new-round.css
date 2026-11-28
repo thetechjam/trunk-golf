@@ -256,3 +256,17 @@
   color: var(--green-ink);
   font-weight: 600;
 }
+
+/* "Same course as last time. [Play somewhere else]" above the course search.
+   A flex line so the 44px button sits centred on the small text rather than
+   stretching one line box, and wraps under it on a narrow phone. */
+.course-same {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  margin: 0;
+}
+.course-same .btn-ghost {
+  font-size: var(--fs-sm);
+}

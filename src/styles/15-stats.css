@@ -241,3 +241,87 @@
   font-size: var(--fs-xs);
   color: var(--muted);
 }
+
+/* ---------- This season ----------
+   One card above the player cards: the year's net money, then the regular
+   crew head to head. Tokens only, so dark and Glare follow the theme. The
+   headings are the quiet uppercase labels other cards use (`.card h2`). */
+.season h2,
+.season h3 {
+  margin: 0;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+.season h3 {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.season-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.season-count {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.season-money,
+.season-h2h {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.season-money li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.season-who {
+  font-weight: 700;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.season-rounds {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+  flex: 0 0 auto;
+}
+.season-net,
+.season-record {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  min-width: 4.5ch;
+  text-align: right;
+}
+.season-net.up {
+  color: var(--under-ink);
+}
+.season-net.down {
+  color: var(--over-strong);
+}
+.season-h2h-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.season-h2h-sub {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.season-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}

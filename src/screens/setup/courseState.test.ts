@@ -9,7 +9,9 @@ import {
   courseReducer,
   deriveCourse,
   initialCourseState,
+  courseStateFromRound,
 } from './courseState';
+import type { Round } from '../../types';
 
 describe('mergeNineIntoCard', () => {
   it('gives back the card unchanged when the nine was not edited', () => {
@@ -154,5 +156,120 @@ describe('a card read from a photo', () => {
     const saved = courseReducer(loaded, { type: 'saved', name: 'X', from: 'check' });
     expect(saved.holesSource).toBe('saved');
     expect(deriveCourse(saved).importIssues).toEqual([]);
+  });
+});
+
+describe('courseStateFromRound', () => {
+  const round = (patch: Partial<Round> = {}): Round => ({
+    id: 'r1',
+    course: 'Sunset Ridge',
+    date: '2026-09-01',
+    createdAt: 1,
+    updatedAt: 1,
+    players: [{ id: 'p1', name: 'Mike' }],
+    holes: realCard18(),
+    games: ['skins'],
+    options: { useNet: false, stablefordMode: 'standard', loneWolfMultiplier: 2, blindWolfMultiplier: 3, stakes: {} },
+    scores: {},
+    wolf: {},
+    status: 'finished',
+    ...patch,
+  });
+
+  it('carries the round’s own eighteen, stroke indexes, slope and rating, without a note or caveat', () => {
+    const s = courseStateFromRound(round({ slope: 128, rating: 71.4 }))!;
+    expect(s.course).toBe('Sunset Ridge');
+    expect(s.holeCount).toBe(18);
+    expect(s.holes).toEqual(realCard18());
+    expect(s.source).toEqual(realCard18());
+    expect(s.nine).toBe('front');
+    expect(s.slope).toBe(128);
+    expect(s.rating).toBe(71.4);
+    expect(s.advancedHoles).toBe(true);
+    expect(s.holesSource).toBe('saved');
+    expect(s.savedNote).toBeNull();
+    expect(s.imported).toBeNull();
+    expect(deriveCourse(s).rated).toBe(true);
+  });
+
+  it('keeps a back nine played off an eighteen-hole rating', () => {
+    const back = sliceCourseHoles(realCard18(), 9, { nine: 'back' });
+    const s = courseStateFromRound(round({ holes: back, slope: 128, rating: 71.4, ratingHoles: 18 }))!;
+    expect(s.holeCount).toBe(9);
+    expect(s.holes.map((h) => h.number)).toEqual([10, 11, 12, 13, 14, 15, 16, 17, 18]);
+    expect(s.nine).toBe('back');
+    expect(s.source).toBeNull();
+    expect(s.ratingHoles).toBe(18);
+    expect(deriveCourse(s).rated).toBe(true);
+  });
+
+  it('keeps the saved eighteen behind a remembered nine when its pars agree', () => {
+    const back = sliceCourseHoles(realCard18(), 9, { nine: 'back' });
+    const saved = [{ id: 'c1', name: 'sunset ridge ', holes: realCard18() }];
+    const s = courseStateFromRound(round({ holes: back }), saved)!;
+    expect(s.holes).toEqual(back);
+    expect(s.source).toEqual(sliceCourseHoles(realCard18(), 18));
+    // 18 holes is that course's card, and back to 9 is the same back nine.
+    const eighteen = courseReducer(s, { type: 'holeCount', count: 18 });
+    expect(eighteen.holes.map((h) => h.par)).toEqual(realCard18().map((h) => h.par));
+    expect(courseReducer(eighteen, { type: 'holeCount', count: 9 }).holes).toEqual(back);
+  });
+
+  it('does not use a saved card of the same name whose pars differ, or an eighteen', () => {
+    const front = sliceCourseHoles(realCard18(), 9);
+    const other = realCard18().map((h) => (h.number === 3 ? { ...h, par: h.par === 3 ? 4 : 3 } : h));
+    expect(
+      courseStateFromRound(round({ holes: front }), [{ id: 'c1', name: 'Sunset Ridge', holes: other }])!.source
+    ).toBeNull();
+    expect(
+      courseStateFromRound(round({ holes: front }), [{ id: 'c1', name: 'Elsewhere', holes: realCard18() }])!
+        .source
+    ).toBeNull();
+    // An eighteen is its own source, whatever is saved.
+    expect(
+      courseStateFromRound(round(), [{ id: 'c1', name: 'Sunset Ridge', holes: other }])!.source
+    ).toEqual(realCard18());
+  });
+
+  it('still gives a state for a round with no course name, with pars only', () => {
+    const s = courseStateFromRound(
+      round({ course: undefined, holes: realCard18().map(({ number, par }) => ({ number, par })) })
+    )!;
+    expect(s.course).toBe('');
+    expect(s.advancedHoles).toBe(false);
+    expect(s.slope).toBeUndefined();
+    expect(s.rating).toBeUndefined();
+  });
+
+  it('is null for a round of any other length, and for no round', () => {
+    expect(courseStateFromRound(round({ holes: realCard18().slice(0, 7) }))).toBeNull();
+    expect(courseStateFromRound(null)).toBeNull();
+  });
+
+  it('does not share hole objects with the round', () => {
+    const r = round();
+    const s = courseStateFromRound(r)!;
+    expect(s.holes[0]).not.toBe(r.holes[0]);
+  });
+});
+
+describe('reset', () => {
+  it('goes back to the blank course', () => {
+    const loaded = courseStateFromRound({
+      id: 'r1',
+      course: 'Sunset Ridge',
+      date: '2026-09-01',
+      createdAt: 1,
+      updatedAt: 1,
+      players: [],
+      holes: realCard18(),
+      games: ['skins'],
+      options: { useNet: false, stablefordMode: 'standard', loneWolfMultiplier: 2, blindWolfMultiplier: 3, stakes: {} },
+      scores: {},
+      wolf: {},
+      slope: 120,
+      rating: 70,
+    })!;
+    expect(courseReducer(loaded, { type: 'reset' })).toEqual(initialCourseState);
   });
 });

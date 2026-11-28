@@ -61,6 +61,12 @@ export default function App() {
   // which the history stack keeps as a fixed set of screens.
   const [tripId, setTripId] = useState<string | null>(null);
   const [round, setRound] = useState<Round | null>(null);
+  /**
+   * The finished round New Round fills itself in from, after Home's "Play
+   * again". App state, never stored: a reload, or Start New Round, gives the
+   * ordinary New Round.
+   */
+  const [again, setAgain] = useState<Round | null>(null);
   // Read synchronously so the first paint is the shared round opening rather
   // than the Home screen flashing up and being replaced a frame later.
   const [incoming, setIncoming] = useState<Incoming>(() =>
@@ -490,14 +496,22 @@ export default function App() {
       {view === 'home' && (
         <Home
           onNew={() => {
+            setAgain(null);
+            load(null);
+            goTo('setup');
+          }}
+          onPlayAgain={(r) => {
+            setAgain(r);
             load(null);
             goTo('setup');
           }}
           onNewLeague={() => {
+            setAgain(null);
             load(null);
             goTo('leagueSetup');
           }}
           onNewScramble={() => {
+            setAgain(null);
             load(null);
             goTo('scrambleSetup');
           }}
@@ -554,6 +568,7 @@ export default function App() {
 
       {view === 'setup' && (
         <Setup
+          again={again}
           onCancel={() => goTo('home')}
           onStart={(r) => {
             load(r);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Ref } from 'react';
 import { CourseTimeoutError, type CourseHit, type FetchedCourse } from '../courses/openGolfApi';
 import { findCourses, loadCourse } from '../courses/findCourses';
 
@@ -11,6 +11,8 @@ interface Props {
   onPick: (course: FetchedCourse) => void;
   label?: string;
   placeholder?: string;
+  /** The text field, for a parent that moves focus to it. */
+  inputRef?: Ref<HTMLInputElement>;
 }
 
 /**
@@ -22,7 +24,14 @@ interface Props {
  * service does not answer, the matches come from the offline course list
  * (src/courses/findCourses.ts) and the status line says so.
  */
-export function CourseSearch({ value, onChange, onPick, label = 'Course (optional)', placeholder = 'e.g. Pebble Beach' }: Props) {
+export function CourseSearch({
+  value,
+  onChange,
+  onPick,
+  label = 'Course (optional)',
+  placeholder = 'e.g. Pebble Beach',
+  inputRef,
+}: Props) {
   const [hits, setHits] = useState<CourseHit[]>([]);
   const [offline, setOffline] = useState(false);
   const [open, setOpen] = useState(false);
@@ -114,6 +123,7 @@ export function CourseSearch({ value, onChange, onPick, label = 'Course (optiona
       <label className="field">
         <span>{label}</span>
         <input
+          ref={inputRef}
           value={value}
           onChange={(e) => {
             typed.current = e.target.value;
