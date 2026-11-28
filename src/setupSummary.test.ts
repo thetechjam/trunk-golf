@@ -161,12 +161,6 @@ describe('handicapSummary', () => {
     expect(handicapSummary([net(85, 90)])).toBe('Custom');
   });
 
-  it('treats an explicit 100 equal to the fallback as the default', () => {
-    expect(handicapSummary([{ canNet: true, net: true, allowance: 100, fallback: 100 }])).toBe(
-      'Net · full allowance'
-    );
-  });
-
   it('reads as the default with no rows', () => {
     expect(handicapSummary([])).toBe('Net · full allowance');
   });

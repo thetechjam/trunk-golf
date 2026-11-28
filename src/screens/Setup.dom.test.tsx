@@ -859,6 +859,39 @@ describe('Handicap options', () => {
     expect(summary()).toBe('Custom');
   });
 
+  it('read as the default when last time remembered an explicit 100% on Skins', async () => {
+    localStorage.setItem(
+      'press.rounds.v1',
+      JSON.stringify([
+        {
+          id: 'r0',
+          date: '2026-09-01',
+          createdAt: 1,
+          updatedAt: 1,
+          players: [{ id: 'p1', name: 'Al' }, { id: 'p2', name: 'Bo' }],
+          holes: realCard18(),
+          games: ['skins'],
+          options: {
+            useNet: true,
+            stablefordMode: 'standard',
+            loneWolfMultiplier: 2,
+            blindWolfMultiplier: 3,
+            stakes: {},
+            allowanceByGame: { skins: 100 },
+          },
+          scores: {},
+          wolf: {},
+          status: 'finished',
+        },
+      ])
+    );
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await withHandicap(user);
+    await openRow(user, 'Games');
+    expect(summary()).toBe('Net · full allowance');
+  });
+
   it('name the four-ball 90% a four-player match falls back to', async () => {
     const user = userEvent.setup();
     render(<Setup onCancel={() => {}} onStart={() => {}} />);
