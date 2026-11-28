@@ -54,6 +54,8 @@ describe('the Trips section', () => {
       ?.textContent?.replace(/\s+/g, ' ');
     expect(text).toMatch(/Add to a trip/);
     expect(text).toMatch(/Tap Trip on Home/);
+    // Mid-round the Trip row is folded away, so Help says where it lives.
+    expect(text).toMatch(/Trip on Home \(under Or start something else\)/);
     expect(text).not.toMatch(/Trip row/);
   });
 });

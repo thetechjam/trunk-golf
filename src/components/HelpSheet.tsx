@@ -56,10 +56,11 @@ export function HelpSheet({ onBack }: Props) {
         <p>
           Playing several rounds over a long weekend? Put them on a trip and
           settle the money once at the end, instead of after every round. Tap{' '}
-          <strong>Trip</strong> on Home, or <strong>Add to a trip</strong> at
-          the bottom of New Round, and name it. While the trip is going, the
-          next round you start is already on it — New Round says which trip,
-          with <strong>Change</strong> beside it.
+          <strong>Trip</strong> on Home (under Or start something else), or{' '}
+          <strong>Add to a trip</strong> at the bottom of New Round, and name
+          it. While the trip is going, the next round you start is already on
+          it — New Round says which trip, with <strong>Change</strong> beside
+          it.
         </p>
         <p>
           Each round still shows its own settlement. The trip screen — from the

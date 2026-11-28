@@ -187,8 +187,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   has no stake, a line under the tiles says so ("No stakes yet — add a $
   amount to track who owes what.") — a nudge, not an error, and a round at $0
   starts as before.
-- **Home's League and Scramble tiles are now rows in that list**, each with a
-  line saying what it is. Start New Round is still one tap, and Play again
+- **Home's League and Scramble tiles are now rows in the "Or start something
+  else" list**, each with a line saying what it is. Start New Round is still one tap, and Play again
   sits directly under it. While a round is in play the list is folded behind
   "Or start something else", so Resume stays the thing to press.
 - **New Round no longer has a Money row.** Stakes are typed on the game
