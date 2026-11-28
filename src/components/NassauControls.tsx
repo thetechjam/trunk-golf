@@ -90,6 +90,16 @@ export function NassauControls({ round, hole, onChange }: Props) {
             ? `Press — new bet on holes ${start}–${end}`
             : 'No holes left to press'}
       </button>
+      {/* Until the group has pressed once this round: the word is the jargon
+          most likely to stop a new player, and the button alone does not
+          say what is at stake. Derived from the round, so nothing is stored. */}
+      {allPresses.length === 0 && canPress && (
+        <p className="press-note">
+          {hasBackNine
+            ? 'A press is a new bet on the holes left in this nine, for the same stake.'
+            : 'A press is a new bet on the holes left, for the same stake.'}
+        </p>
+      )}
       {allPresses.length > 0 && (
         <div className="press-list">
           {allPresses.map((s) => {
