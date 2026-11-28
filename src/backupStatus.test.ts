@@ -15,6 +15,7 @@ const settings = (over: Partial<Parameters<typeof backupStatus>[0]['settings']> 
   firstFinishPromptDismissed: true,
   lastBackupAt: null,
   backupNudgeSnoozedAt: null,
+  backupRemindersOff: false,
   ...over,
 });
 
@@ -76,29 +77,37 @@ describe('backupStatus', () => {
     expect(NUDGE_RULES.evicting.quietDays).toBeLessThan(7);
   });
 
-  it('is due in a Safari tab the day after a backup, once a new round is finished', () => {
-    const s = backupStatus({
-      rounds: [done(NOW - 2 * DAY), done(NOW)],
-      settings: settings({ lastBackupAt: NOW - DAY }),
-      risk: 'evicting',
-      now: NOW,
-    });
-    expect(s).toMatchObject({ unbacked: 1, first: false, due: true });
+  it('is not due in a Safari tab the day after a backup, and is due at backup + 5 days', () => {
+    const B = NOW - DAY;
+    const status = (now: number) =>
+      backupStatus({
+        rounds: [done(B - DAY), done(B + DAY / 2)],
+        settings: settings({ lastBackupAt: B }),
+        risk: 'evicting',
+        now,
+      });
+    expect(status(NOW)).toMatchObject({ unbacked: 1, first: false, due: false });
+    expect(status(B + 5 * DAY - 1).due).toBe(false);
+    expect(status(B + 5 * DAY).due).toBe(true);
   });
 
-  it('in a Safari tab, waits out only the "Not now", not the backup', () => {
-    const s = (snoozedDaysAgo: number) =>
+  it('in a Safari tab, waits out the later of the backup and the "Not now"', () => {
+    const s = (backupDaysAgo: number, snoozedDaysAgo: number) =>
       backupStatus({
-        rounds: [done(NOW - 3 * DAY), done(NOW)],
+        rounds: [done(NOW - 30 * DAY), done(NOW)],
         settings: settings({
-          lastBackupAt: NOW - 2 * DAY,
+          lastBackupAt: NOW - backupDaysAgo * DAY,
           backupNudgeSnoozedAt: NOW - snoozedDaysAgo * DAY,
         }),
         risk: 'evicting',
         now: NOW,
       }).due;
-    expect(s(4)).toBe(false);
-    expect(s(5)).toBe(true);
+    // "Not now" is the later answer.
+    expect(s(10, 4)).toBe(false);
+    expect(s(10, 5)).toBe(true);
+    // The backup is the later answer.
+    expect(s(4, 10)).toBe(false);
+    expect(s(5, 10)).toBe(true);
   });
 
   it('counts only finished rounds changed since the last backup', () => {
@@ -113,7 +122,7 @@ describe('backupStatus', () => {
     expect(s).toMatchObject({ finished: 3, unbacked: 1, lastBackupAt: T, due: true });
   });
 
-  it.each(['browser', 'installed', 'native'] as const)(
+  it.each(RISKS)(
     'on %s, waits out the quiet period from the backup, not from the new round',
     (risk) => {
       const { quietDays } = NUDGE_RULES[risk];
@@ -167,5 +176,40 @@ describe('backupStatus', () => {
       });
     }).not.toThrow();
     expect(s).toMatchObject({ finished: 3, unbacked: 3, due: true });
+  });
+
+  describe('with reminders turned off', () => {
+    const cases = RISKS.flatMap((risk) => [
+      { risk, firstFinishPromptDismissed: false },
+      { risk, firstFinishPromptDismissed: true },
+    ]);
+
+    it.each(cases)(
+      'is never due on $risk (first prompt dismissed: $firstFinishPromptDismissed)',
+      ({ risk, firstFinishPromptDismissed }) => {
+        const B = NOW - 400 * DAY;
+        const s = backupStatus({
+          rounds: [done(B - DAY), ...many(20, B + DAY)],
+          settings: settings({
+            backupRemindersOff: true,
+            firstFinishPromptDismissed,
+            lastBackupAt: B,
+          }),
+          risk,
+          now: NOW,
+        });
+        expect(s).toMatchObject({ due: false, unbacked: 20, finished: 21, lastBackupAt: B, risk });
+      }
+    );
+
+    it('still reports unbacked rounds when there has never been a backup', () => {
+      const s = backupStatus({
+        rounds: many(3),
+        settings: settings({ backupRemindersOff: true }),
+        risk: 'browser',
+        now: NOW,
+      });
+      expect(s).toMatchObject({ due: false, unbacked: 3, lastBackupAt: null });
+    });
   });
 });

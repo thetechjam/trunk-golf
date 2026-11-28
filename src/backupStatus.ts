@@ -44,7 +44,10 @@ export interface BackupStatus {
 
 export function backupStatus(input: {
   rounds: Pick<Round, 'status' | 'updatedAt'>[];
-  settings: Pick<Settings, 'lastBackupAt' | 'backupNudgeSnoozedAt' | 'firstFinishPromptDismissed'>;
+  settings: Pick<
+    Settings,
+    'lastBackupAt' | 'backupNudgeSnoozedAt' | 'firstFinishPromptDismissed' | 'backupRemindersOff'
+  >;
   risk: StorageRisk;
   now: number;
 }): BackupStatus {
@@ -60,14 +63,18 @@ export function backupStatus(input: {
 
   const base = { risk, finished: finished.length, unbacked, lastBackupAt };
   if (unbacked === 0) return { ...base, due: false, first: false };
+  // "Don't remind me" silences the card, first ask included. The counts above
+  // are still reported so the Settings "Last backup" line stays true.
+  if (settings.backupRemindersOff) return { ...base, due: false, first: false };
   if (!settings.firstFinishPromptDismissed) return { ...base, due: true, first: true };
 
   const rule = NUDGE_RULES[risk] ?? NUDGE_RULES.browser;
-  // In a Safari tab a round can be wiped after seven days, so a recent backup
-  // buys no quiet: any newer finished round is due. Only "Not now" waits, and
-  // for less than the wipe window.
+  // The quiet period counts from the last answer: a backup or a "Not now",
+  // whichever came later. In a Safari tab that is at most one ask per five
+  // days — inside the seven-day wipe window — rather than one after every
+  // round finished since the last backup.
   const snoozedAt = settings.backupNudgeSnoozedAt ?? 0;
-  const lastAnswer = risk === 'evicting' ? snoozedAt : Math.max(since, snoozedAt);
+  const lastAnswer = Math.max(since, snoozedAt);
   const due = unbacked >= rule.minUnbacked && now - lastAnswer >= rule.quietDays * DAY_MS;
   return { ...base, due, first: false };
 }
