@@ -267,6 +267,24 @@ export function SettingsSheet({
 
           <BackupRows onRestored={onDataChanged} onBackedUp={onDataChanged} />
 
+          {/* Undoes "Don't remind me" on the backup card. Turning it back on
+              starts the "Not now" count over; Home re-picks what it shows. */}
+          <label className="set-row">
+            <span>
+              <span className="set-label">Backup reminders</span>
+              <span className="set-hint">Remind me when rounds aren’t backed up</span>
+            </span>
+            <input
+              className="switch"
+              type="checkbox"
+              checked={!s.backupRemindersOff}
+              onChange={(e) => {
+                set({ backupRemindersOff: !e.target.checked, backupNudgeSnoozeCount: 0 });
+                onDataChanged?.();
+              }}
+            />
+          </label>
+
           <button className="set-row set-action" onClick={() => setView('help')}>
             <span>
               <span className="set-label">How to Play</span>
