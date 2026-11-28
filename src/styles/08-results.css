@@ -65,48 +65,36 @@
 .home-screen-card {
   border-left-color: var(--green-600);
 }
-/* Share › Add to Home Screen, drawn as the two buttons to tap. Wraps to two
-   lines on a 320px screen; the chevron is decoration, the tiles carry text. */
+/* Share, then Add to Home Screen: a numbered list of instructions with the
+   icon to look for inline. Plain text on the card — no tile, border or fill —
+   so nothing here reads as a button to tap. Same list shape as `.moved-steps`
+   below, in ink rather than muted: these are the steps, not a footnote. */
 .a2hs-steps {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 0;
-  list-style: none;
   margin: 0 0 10px;
-  padding: 0;
-}
-.a2hs-step {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
+  padding-left: 1.4em;
   color: var(--ink);
   font-size: var(--fs-sm);
   font-weight: 600;
+  line-height: 1.4;
+}
+.a2hs-step::marker {
+  color: var(--muted);
+}
+.a2hs-step + .a2hs-step {
+  margin-top: 4px;
 }
 .a2hs-step svg {
-  flex: none;
+  vertical-align: -4px;
+  margin-right: 6px;
 }
-/* The chevron sits in the gap before the second tile, outside its border. */
-.a2hs-step + .a2hs-step {
-  position: relative;
-  margin-left: 24px;
+/* Focus moves here when "Show me how" reveals the steps. */
+.a2hs-steps:focus {
+  outline: none;
 }
-.a2hs-step + .a2hs-step::before {
-  content: '›';
-  content: '›' / '';
-  position: absolute;
-  left: -17px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  font-size: var(--fs-xl);
-  font-weight: 400;
-  line-height: 1;
+.a2hs-steps:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 .keep-rounds .install-btn {
   margin: 0 0 10px;
