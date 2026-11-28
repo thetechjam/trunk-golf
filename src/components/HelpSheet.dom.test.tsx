@@ -31,3 +31,15 @@ describe('the trips section', () => {
     expect(trips.closest('section')?.textContent).toMatch(/settle the money once/);
   });
 });
+
+describe('the stakes sentence', () => {
+  it('says a stake is typed on the game’s tile, with the Money row as the other place', () => {
+    const { container } = render(<HelpSheet onBack={() => {}} />);
+    const para = [...container.querySelectorAll('p')].find((p) =>
+      p.querySelector('strong')?.textContent === 'stake'
+    );
+    expect(para?.textContent?.replace(/\s+/g, ' ')).toMatch(
+      /^Type a stake on a game's tile \(or in the Money row\) and Trunk keeps a running total/
+    );
+  });
+});

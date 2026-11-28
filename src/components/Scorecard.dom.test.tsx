@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, cleanup, fireEvent, screen } from '@testing-library/react';
+import { render, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import type { JunkClaims, Round } from '../types';
 import { Scorecard } from './Scorecard';
 import { makeRound, player, holes18 } from '../games/testFixtures';
@@ -129,12 +129,19 @@ describe('a nine on its own', () => {
   });
 });
 
-describe('typing into a cell', () => {
-  it('commits nothing when the cell is left as it was — so a league X stays an X', () => {
-    const hs = holes18().slice(0, 9);
-    const round: Round = makeRound({
+describe('editing a cell', () => {
+  // Nine holes, so every cell is on screen; hole 1 is a par 4.
+  const nine = holes18().slice(0, 9);
+  const plain = (): Round =>
+    makeRound({
       players: four,
-      holes: hs,
+      holes: nine,
+      scores: { 1: { p1: 5, p2: 4, p3: 3 } },
+    });
+  const leagueRound = (): Round =>
+    makeRound({
+      players: four,
+      holes: nine,
       options: {
         league: {
           pointsPerMatch: 1,
@@ -147,19 +154,141 @@ describe('typing into a cell', () => {
       scores: { 1: { p1: 9, p2: 4, p3: 5, p4: 4 } },
       pickups: { 1: ['p1'] },
     });
-    const calls: unknown[] = [];
-    render(<Scorecard round={round} onScore={(...a) => calls.push(a)} />);
-    // Tap the X to look at it, then tap away.
-    fireEvent.click(screen.getByRole('button', { name: /Al, hole 1, picked up/ }));
-    const input = document.querySelector<HTMLInputElement>('.sc-input')!;
-    fireEvent.blur(input);
-    expect(calls).toEqual([]);
+  const mount = (round: Round, withPickup = false) => {
+    const scores: unknown[] = [];
+    const pickups: unknown[] = [];
+    render(
+      <Scorecard
+        round={round}
+        onScore={(...a) => scores.push(a)}
+        onPickup={withPickup ? (...a) => pickups.push(a) : undefined}
+      />
+    );
+    return { scores, pickups };
+  };
+  const open = (name: RegExp) => fireEvent.click(screen.getByRole('button', { name }));
+  const sheet = () => document.querySelector('dialog');
+  const more = () => fireEvent.click(screen.getByRole('button', { name: /^More scores for/ }));
+  const overflow = () =>
+    [...screen.getByRole('group', { name: /^All scores for/ }).querySelectorAll('button')].map(
+      (b) => b.textContent
+    );
 
-    // A real change still goes through.
-    fireEvent.click(screen.getByRole('button', { name: /Bo, hole 1, 4/ }));
-    const next = document.querySelector<HTMLInputElement>('.sc-input')!;
-    fireEvent.change(next, { target: { value: '5' } });
-    fireEvent.blur(next);
-    expect(calls).toEqual([[1, 'p2', 5]]);
+  it('opens a sheet named for the player, hole and par, with chips and no field to type in', () => {
+    mount(plain());
+    open(/^Bo, hole 1, 4/);
+    expect(sheet()?.getAttribute('aria-label')).toBe('Bo · Hole 1 · Par 4');
+    expect(sheet()?.querySelector('h2')?.textContent).toBe('Bo · Hole 1 · Par 4');
+    expect(screen.getByRole('radiogroup', { name: "Bo's score, par 4" })).toBeTruthy();
+    expect(document.querySelector('input')).toBeNull();
+  });
+
+  it('one chip is the whole entry: a 4 fixed to 5 is 5, never 45, and the sheet closes', () => {
+    const { scores } = mount(plain());
+    open(/^Bo, hole 1, 4/);
+    fireEvent.click(screen.getByRole('radio', { name: '5, Bogey' }));
+    expect(scores).toEqual([[1, 'p2', 5]]);
+    expect(sheet()).toBeNull();
+  });
+
+  it('re-tapping the score already there commits nothing — it was right — and closes', () => {
+    const { scores } = mount(plain());
+    open(/^Bo, hole 1, 4/);
+    fireEvent.click(screen.getByRole('radio', { name: '4, Par' }));
+    expect(scores).toEqual([]);
+    expect(sheet()).toBeNull();
+  });
+
+  it('fills a blank cell', () => {
+    const { scores } = mount(plain());
+    open(/^Di, hole 1, no score/);
+    fireEvent.click(screen.getByRole('radio', { name: '3, Birdie' }));
+    expect(scores).toEqual([[1, 'p4', 3]]);
+  });
+
+  it('commits nothing when closed with ✕ — so a league X stays an X', async () => {
+    const { scores, pickups } = mount(leagueRound(), true);
+    open(/^Al, hole 1, picked up/);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(sheet()).toBeNull());
+    expect(scores).toEqual([]);
+    expect(pickups).toEqual([]);
+  });
+
+  it('turns an X into a real 9 when the 9 under it is tapped', () => {
+    const { scores } = mount(leagueRound(), true);
+    open(/^Al, hole 1, picked up/);
+    more();
+    fireEvent.click(screen.getByRole('button', { name: '9, +5' }));
+    expect(scores).toEqual([[1, 'p1', 9]]);
+    expect(sheet()).toBeNull();
+  });
+
+  it('offers 1–9 and an X on a league card, and the X goes to onPickup', () => {
+    const { scores, pickups } = mount(leagueRound(), true);
+    open(/^Bo, hole 1, 4/);
+    more();
+    expect(overflow()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'X · picked up']);
+    fireEvent.click(screen.getByRole('button', { name: /^Picked up — X/ }));
+    expect(pickups).toEqual([[1, 'p2']]);
+    expect(scores).toEqual([]);
+    expect(sheet()).toBeNull();
+  });
+
+  it('offers no X on a league card when there is nothing to take it', () => {
+    mount(leagueRound());
+    open(/^Bo, hole 1, 4/);
+    more();
+    expect(overflow()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9']);
+  });
+
+  it('offers 1–15 and no X on an ordinary card, even given onPickup', () => {
+    mount(plain(), true);
+    open(/^Bo, hole 1, 4/);
+    more();
+    expect(overflow()).toEqual(Array.from({ length: 15 }, (_, i) => String(i + 1)));
+  });
+
+  it('clears a score with its own button, which a blank cell does not show', () => {
+    const { scores } = mount(plain());
+    open(/^Bo, hole 1, 4/);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear score' }));
+    expect(scores).toEqual([[1, 'p2', null]]);
+    expect(sheet()).toBeNull();
+
+    open(/^Di, hole 1, no score/);
+    expect(screen.queryByRole('button', { name: 'Clear score' })).toBeNull();
+  });
+
+  it('clears an X too', () => {
+    const { scores } = mount(leagueRound(), true);
+    open(/^Al, hole 1, picked up/);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear score' }));
+    expect(scores).toEqual([[1, 'p1', null]]);
+  });
+
+  it('opens nothing on a card that cannot be edited', () => {
+    render(<Scorecard round={plain()} />);
+    open(/^Bo, hole 1, 4/);
+    expect(sheet()).toBeNull();
+  });
+});
+
+describe('the edit hint', () => {
+  it('says the cells can be tapped, between the grid and the key', () => {
+    const round = makeRound({ players: four, holes: holes18(), games: ['junk'], junk: claims });
+    render(<Scorecard round={round} onScore={() => {}} />);
+    const hint = screen.getByText('Tap a score to edit');
+    const card = document.querySelector('.card-scroll')!;
+    const junk = document.querySelector('.sc-junk')!;
+    const key = document.querySelector('.sc-legend')!;
+    expect(card.compareDocumentPosition(hint) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(hint.compareDocumentPosition(junk) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(hint.compareDocumentPosition(key) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('is not there when the card cannot be edited', () => {
+    show();
+    expect(screen.queryByText('Tap a score to edit')).toBeNull();
   });
 });

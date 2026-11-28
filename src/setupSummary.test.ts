@@ -5,6 +5,9 @@ import {
   gamesSummary,
   stakesSummary,
   leagueCourseSummary,
+  handicapSummary,
+  stakesPrompt,
+  type HandicapRow,
 } from './setupSummary';
 import { holes, holes18 } from './games/testFixtures';
 
@@ -123,5 +126,88 @@ describe('leagueCourseSummary', () => {
 
   it('reports no holes rather than an empty string', () => {
     expect(leagueCourseSummary([])).toBe('No holes');
+  });
+});
+
+describe('handicapSummary', () => {
+  const net = (allowance = 100, fallback = 100): HandicapRow => ({ canNet: true, net: true, allowance, fallback });
+  const gross = (): HandicapRow => ({ canNet: true, net: false, allowance: 100, fallback: 100 });
+  const quota = (): HandicapRow => ({ canNet: false, net: false, allowance: 100, fallback: 100 });
+
+  it('reads full allowance when every game is net at 100', () => {
+    expect(handicapSummary([net(), net()])).toBe('Net · full allowance');
+    expect(handicapSummary([quota(), net()])).toBe('Net · full allowance');
+  });
+
+  it('names the four-ball 90% when a game sits at that fallback', () => {
+    expect(handicapSummary([net(90, 90), net()])).toBe('Net · 90% four-ball');
+  });
+
+  it('reads Gross when every net-capable game is gross', () => {
+    expect(handicapSummary([gross(), gross()])).toBe('Gross');
+  });
+
+  it('is Custom when Quota sits beside a gross game', () => {
+    // Quota always uses handicaps, so the round is not "Gross".
+    expect(handicapSummary([quota(), gross()])).toBe('Custom');
+  });
+
+  it('is Custom for a mix of gross and net', () => {
+    expect(handicapSummary([net(), gross()])).toBe('Custom');
+  });
+
+  it('is Custom when an allowance is moved off its fallback', () => {
+    expect(handicapSummary([net(85, 100)])).toBe('Custom');
+    expect(handicapSummary([net(85, 90)])).toBe('Custom');
+  });
+
+  it('reads as the default with no rows', () => {
+    expect(handicapSummary([])).toBe('Net · full allowance');
+  });
+});
+
+describe('stakesPrompt', () => {
+  it('says nothing with no games selected', () => {
+    expect(stakesPrompt([], {})).toBeNull();
+  });
+
+  it('invites a stake when no game has one', () => {
+    expect(stakesPrompt(['skins', 'wolf'], {})).toBe(
+      'No stakes yet — add a $ amount to track who owes what.'
+    );
+  });
+
+  it('treats a zero stake as unstaked', () => {
+    expect(stakesPrompt(['skins'], { skins: 0 })).toBe(
+      'No stakes yet — add a $ amount to track who owes what.'
+    );
+  });
+
+  it('says nothing once every game is staked', () => {
+    expect(stakesPrompt(['skins', 'wolf'], { skins: 5, wolf: 1 })).toBeNull();
+  });
+
+  it('names one unstaked game among staked ones', () => {
+    expect(stakesPrompt(['skins', 'wolf'], { skins: 5 })).toBe(
+      'No stake on Wolf yet — it won’t count toward the money.'
+    );
+  });
+
+  it('names two unstaked games', () => {
+    expect(stakesPrompt(['nassau', 'skins', 'junk'], { nassau: 5 })).toBe(
+      'No stake on Skins or Junk yet — they won’t count toward the money.'
+    );
+  });
+
+  it('names three unstaked games', () => {
+    expect(stakesPrompt(['nassau', 'skins', 'wolf', 'junk'], { nassau: 5, wolf: 0 })).toBe(
+      'No stake on Skins, Wolf or Junk yet — they won’t count toward the money.'
+    );
+  });
+
+  it('ignores a stake left on an unselected game', () => {
+    expect(stakesPrompt(['skins'], { wolf: 5 })).toBe(
+      'No stakes yet — add a $ amount to track who owes what.'
+    );
   });
 });

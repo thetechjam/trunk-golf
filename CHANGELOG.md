@@ -145,6 +145,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   path on `https://trunk.golf` with a permanent (301) redirect.
 
 ### Changed
+- **Stakes go on the game tiles in New Round.** A picked game's tile shows
+  its own `$` field and unit under the name ("$ 5 per skin"), the same stake
+  the Money row edits; last time's stakes still fill in. While a picked game
+  has no stake, a line under the tiles says so ("No stakes yet — add a $
+  amount to track who owes what.") — a nudge, not an error, and a round at $0
+  starts as before. The Money row is unchanged.
+- **"Scoring" in New Round is now "Handicap options"**, folded closed under
+  the game tiles with a one-line summary of what is in play ("Net · full
+  allowance", "Net · 90% four-ball", "Gross" or "Custom"). The gross/net and
+  allowance choices inside are the same.
+- **Stake fields are 44px tall**, up from 40, in New Round, on the Board,
+  in Results and in Scramble setup.
 - **The Home Screen tip depends on where Trunk is running.** Hidden once
   Trunk is installed; in a Safari tab the Add Trunk to your Home Screen card
   takes its place (see Added); elsewhere it no longer mentions Safari.
