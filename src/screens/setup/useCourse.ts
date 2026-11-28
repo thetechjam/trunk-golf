@@ -3,12 +3,17 @@ import type { SavedCourse } from '../../types';
 import type { FetchedCourse } from '../../courses/openGolfApi';
 import { uid, listCourses, saveCourse, deleteCourse, COURSES_KEY } from '../../storage';
 import { notSavedReason } from '../../notSaved';
-import { courseReducer, courseToSave, deriveCourse, initialCourseState } from './courseState';
+import { courseReducer, courseToSave, deriveCourse, initialCourseState, type CourseState } from './courseState';
 
 interface Options {
   /** Opens one of the screen's collapsible rows (see SetupRow). */
   openRow: (key: 'course' | 'holes') => void;
   setError: (message: string) => void;
+  /**
+   * Where the course starts, read on mount only. New Round passes the course
+   * of the last round (or the one being played again); absent, it is blank.
+   */
+  initial?: CourseState | null;
 }
 
 /**
@@ -21,8 +26,8 @@ interface Options {
  * error line stay the screen's own; this only asks to open one or write the
  * other.
  */
-export function useCourse({ openRow, setError }: Options) {
-  const [cs, dispatch] = useReducer(courseReducer, initialCourseState);
+export function useCourse({ openRow, setError, initial }: Options) {
+  const [cs, dispatch] = useReducer(courseReducer, initial ?? initialCourseState);
   const derived = deriveCourse(cs);
   const [courses, setCourses] = useState<SavedCourse[]>(listCourses());
   // The saved course being handed out, if any — see the QR button on each row.
