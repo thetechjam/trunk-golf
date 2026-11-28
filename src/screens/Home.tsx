@@ -146,7 +146,7 @@ export function Home({
             League
           </span>
           <span className="home-action-sub" id="home-league-sub">
-            Team points, season standings
+            A weekly <span className="home-action-keep">2-on-2</span> night
           </span>
         </button>
         {onNewScramble && (
@@ -161,7 +161,7 @@ export function Home({
               Scramble
             </span>
             <span className="home-action-sub" id="home-scramble-sub">
-              Teams, one ball
+              Everyone hits, best ball
             </span>
           </button>
         )}

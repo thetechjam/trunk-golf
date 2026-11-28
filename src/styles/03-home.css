@@ -474,6 +474,12 @@
   line-height: 1.25;
   text-wrap: balance;
 }
+/* "2-on-2" is one term: kept whole so a narrow tile never breaks it at a
+   hyphen ("A weekly 2-" / "on-2 night"). At 320-390px each line still fits:
+   "A weekly" / "2-on-2 night" and "Everyone hits," / "best ball". */
+.home-action-keep {
+  white-space: nowrap;
+}
 /* Beside Start New Round (no Scramble), the tile is sized by its content,
    and a descriptor there would widen it enough to squeeze the primary at
    320px. So it is the word alone; the description stays on the button for
