@@ -368,12 +368,33 @@ export function courseReducer(state: CourseState, action: CourseAction): CourseS
  *
  * Only a nine or an eighteen: a round of any other length (one that arrived
  * by link) is not a card New Round can set up, so it starts blank instead.
+ *
+ * A nine keeps the eighteen behind it when a saved course of the same name
+ * has one whose same nine has the same pars — so switching to 18 holes, or
+ * to the other nine, gives that course's card rather than par 4s. A saved
+ * card that disagrees is somewhere else under the same name, and is not used.
  */
-export function courseStateFromRound(round: Round | null | undefined): CourseState | null {
+export function courseStateFromRound(
+  round: Round | null | undefined,
+  saved: SavedCourse[] = []
+): CourseState | null {
   if (!round) return null;
   const n = round.holes.length;
   if (n !== 9 && n !== 18) return null;
   const holes = round.holes.map((h) => ({ ...h }));
+  const nine = holes[0]?.number === 10 ? 'back' : 'front';
+  const name = round.course?.trim().toLowerCase() ?? '';
+  const card =
+    n === 9 && name
+      ? saved.find((c) => c.name.trim().toLowerCase() === name && c.holes.length >= 18)
+      : undefined;
+  const behind =
+    card &&
+    sliceCourseHoles(card.holes, 9, { nine }).every(
+      (h, i) => h.number === holes[i].number && h.par === holes[i].par
+    )
+      ? sliceCourseHoles(card.holes, 18)
+      : null;
   return {
     ...initialCourseState,
     course: round.course?.trim() ?? '',
@@ -385,8 +406,8 @@ export function courseStateFromRound(round: Round | null | undefined): CourseSta
     advancedHoles: holes.some((h) => typeof h.strokeIndex === 'number'),
     holesSource: 'saved',
     imported: null,
-    source: n === 18 ? holes.map((h) => ({ ...h })) : null,
-    nine: holes[0]?.number === 10 ? 'back' : 'front',
+    source: n === 18 ? holes.map((h) => ({ ...h })) : behind,
+    nine,
     savedNote: null,
   };
 }

@@ -203,6 +203,34 @@ describe('courseStateFromRound', () => {
     expect(deriveCourse(s).rated).toBe(true);
   });
 
+  it('keeps the saved eighteen behind a remembered nine when its pars agree', () => {
+    const back = sliceCourseHoles(realCard18(), 9, { nine: 'back' });
+    const saved = [{ id: 'c1', name: 'sunset ridge ', holes: realCard18() }];
+    const s = courseStateFromRound(round({ holes: back }), saved)!;
+    expect(s.holes).toEqual(back);
+    expect(s.source).toEqual(sliceCourseHoles(realCard18(), 18));
+    // 18 holes is that course's card, and back to 9 is the same back nine.
+    const eighteen = courseReducer(s, { type: 'holeCount', count: 18 });
+    expect(eighteen.holes.map((h) => h.par)).toEqual(realCard18().map((h) => h.par));
+    expect(courseReducer(eighteen, { type: 'holeCount', count: 9 }).holes).toEqual(back);
+  });
+
+  it('does not use a saved card of the same name whose pars differ, or an eighteen', () => {
+    const front = sliceCourseHoles(realCard18(), 9);
+    const other = realCard18().map((h) => (h.number === 3 ? { ...h, par: h.par === 3 ? 4 : 3 } : h));
+    expect(
+      courseStateFromRound(round({ holes: front }), [{ id: 'c1', name: 'Sunset Ridge', holes: other }])!.source
+    ).toBeNull();
+    expect(
+      courseStateFromRound(round({ holes: front }), [{ id: 'c1', name: 'Elsewhere', holes: realCard18() }])!
+        .source
+    ).toBeNull();
+    // An eighteen is its own source, whatever is saved.
+    expect(
+      courseStateFromRound(round(), [{ id: 'c1', name: 'Sunset Ridge', holes: other }])!.source
+    ).toEqual(realCard18());
+  });
+
   it('still gives a state for a round with no course name, with pars only', () => {
     const s = courseStateFromRound(
       round({ course: undefined, holes: realCard18().map(({ number, par }) => ({ number, par })) })

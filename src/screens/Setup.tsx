@@ -6,7 +6,7 @@ import { GAMES } from '../games';
 import { canScoreNet, usesHandicap } from '../games/scoring';
 import { wolfForHole } from '../games/wolf';
 import { effectiveSide, assignmentOf, type Assign } from '../components/TeamPicker';
-import { uid, listRounds, getAliases, mergePeople, ALIASES_KEY, ROUNDS_KEY } from '../storage';
+import { uid, listRounds, listCourses, getAliases, mergePeople, ALIASES_KEY, ROUNDS_KEY } from '../storage';
 import { notSavedReason } from '../notSaved';
 import { SetupRow } from '../components/SetupRow';
 import { TripPicker } from '../components/TripPicker';
@@ -62,7 +62,7 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
     return {
       seed: again ? seedFrom(again) : null,
       remembered: lastSetup(again ? [again] : rounds),
-      course: courseStateFromRound(again ?? lastCourseRound(rounds)),
+      course: courseStateFromRound(again ?? lastCourseRound(rounds), listCourses()),
     };
   });
   const { seed, remembered } = start0;
