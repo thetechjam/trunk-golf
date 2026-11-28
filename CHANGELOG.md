@@ -152,6 +152,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A note on New Round when handicaps are in play and the course has no
   stroke indexes**: the strokes would fall in hole order, and tapping the
   note opens the course, or Holes & pars, to set them.
+- **Play again on Home.** Under Start New Round, once a round is finished and
+  nothing is in play: the last everyday round's course, crew and money
+  ("Sunset Ridge · Mike, Dave, Chris & Tom", "$5 Nassau · $2 Skins"). It
+  opens New Round already filled in from that round — the same players with
+  their handicaps, the course with its pars, stroke indexes, slope and rating,
+  the games, stakes and options, and the Nassau, Match Play and Vegas teams —
+  with a line saying so; change anything, then Start Round. Nothing is saved
+  until then. League nights and scrambles are not offered, and the card never
+  shows beside the Resume card.
+- **New Round remembers the course.** It opens on the course of the last
+  everyday round when that round had a name, with its holes, slope and rating,
+  the way games and stakes already carry over. "Play somewhere else" in the
+  Course row clears it. With no rounds, or an unnamed last round, New Round
+  opens as before.
+- **This season on Stats.** With money played this calendar year (or the
+  year picked, or the latest year with rounds), a card above the players
+  lists each player's net for the season, biggest winner first, and a head to
+  head for the regular crew: who finished ahead in the rounds both played for
+  money, and what each won or lost in them. Hidden while searching, and
+  absent for a group that never plays for money.
 
 ### Changed
 - **The Home Screen tip depends on where Trunk is running.** Hidden once
@@ -218,6 +238,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rather than "All bets open" (in the share text and image too); and on a
   finished round the header button on the Play screen says "Results", not
   "Finish".
+- **A round with no course name is called by its players' first names.**
+  "Mike, Dave, Chris & Tom" rather than "Mike +3", and "Mike, Dave & 3 more"
+  past four; two players still read "Mike v Dave". The Resume card's title
+  can take two lines for it.
 
 ### Fixed
 - **A phone turned sideways lays out the Hole tab's strips properly.** The
