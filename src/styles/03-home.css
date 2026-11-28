@@ -436,72 +436,142 @@
   text-decoration: none;
 }
 
-/* Start New Round and League on one row: the round is the everyday action and
-   takes the width, League is a compact tile beside it. */
-.home-actions {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 10px;
+/* ---------- Or start something else ----------
+   Trip, Scramble and League: the occasions that are not the everyday round,
+   as one card of rows under Start New Round (and Play again). Each row is the
+   format's word in the display face with a plain line under it saying what it
+   is; the text column wraps (min-width: 0, no nowrap), so Trip's longer line
+   takes two lines at 390px and three at 320px without clipping. Tokens only —
+   --card, --line, --muted, --green-ink and --fairway are each retuned for
+   dark and glare. */
+.home-more {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
-.btn-secondary.big.home-league {
+.home-more-title {
+  margin: 0;
+  padding: 12px 16px 4px;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+/* Mid-round the title is the whole card: one 48px disclosure row. The
+   heading's own padding moves onto the button so all of it is the target. */
+.home-more.folded .home-more-title {
+  padding: 0;
+}
+.home-more-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0 16px;
+  text-align: left;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+/* Rotates like .setup-row-chevron, with its token and curve. */
+.home-more-toggle-chev {
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  transition: transform var(--swap) var(--ease-in-out);
+}
+.home-more.open .home-more-toggle-chev {
+  transform: rotate(90deg);
+}
+.home-more-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 16px;
+  text-align: left;
+  border-top: 1px solid var(--line);
+  transition: transform var(--press) var(--ease-out);
+}
+/* Under the plain title the first row needs no rule: the title is not a
+   row. Under the toggle it does, to separate the button from what it opens. */
+.home-more:not(.folded) .home-more-row:first-child {
+  border-top: 0;
+}
+.home-more-row:active {
+  transform: scale(0.98);
+}
+.home-more-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--green-ink);
+  background: color-mix(in srgb, var(--fairway) 10%, var(--card));
+}
+.home-more-text {
+  display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 8px 18px;
-  font-size: var(--fs-md);
+  flex: 1;
+  min-width: 0;
 }
-
-/* With Scramble as well, three across left Start New Round 116px at 360px,
-   stacked three words high and narrower than either secondary — the primary
-   reading as the least of the three. So it takes the whole first row, and the
-   two event formats share the row under it as equals: the word and its icon
-   on one line, what the format is on the line under it. */
-.home-actions.three {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.home-more-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  line-height: 1.2;
 }
-.home-actions.three > :first-child {
-  grid-column: 1 / -1;
-}
-.home-actions.three .btn-secondary.big.home-league {
-  padding: 10px 12px;
-}
-.home-action-main {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-/* What the format is, in plain body text under the button's word — the
-   body's own face, since the button sets the display face. */
-.home-action-sub {
+.home-more-sub {
   font-family: var(--font-body);
-  text-transform: none;
-  letter-spacing: normal;
-  font-weight: 400;
   font-size: var(--fs-sm);
+  line-height: 1.3;
   color: var(--muted);
-  line-height: 1.25;
-  text-wrap: balance;
 }
-/* "2-on-2" is one term: kept whole so a narrow tile never breaks it at a
-   hyphen ("A weekly 2-" / "on-2 night"). Measured: at 360px and 390px both
-   sub-lines sit on one line; at 320px both wrap to two lines, League as
-   "A weekly" / "2-on-2 night". */
-.home-action-keep {
+/* "2-on-2" is one term: never broken at a hyphen ("A weekly 2-" / "on-2"). */
+.home-more-keep {
   white-space: nowrap;
 }
-/* Beside Start New Round (no Scramble), the tile is sized by its content,
-   and a descriptor there would widen it enough to squeeze the primary at
-   320px. So it is the word alone; the description stays on the button for
-   screen readers (aria-describedby reads hidden text). */
-.home-actions:not(.three) .home-action-sub {
-  display: none;
+.home-more-chev {
+  flex: none;
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  color: var(--muted);
+}
+/* The same tint as .play-again (and 16-hover.css) under a pointer. */
+@media (hover: hover) {
+  .home-more-row:hover,
+  .home-more-toggle:hover {
+    background: color-mix(in srgb, var(--fairway) 7%, var(--card));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-more-row,
+  .home-more-toggle-chev {
+    transition: none;
+  }
+  .home-more-row:active {
+    transform: none;
+  }
 }
 
 /* ---------- Play again ----------
    Last round's course, crew and games, one tap from a filled-in New Round.
    Outlined on the card surface, never filled, so Start New Round stays the
    only primary on Home. 2px on top of the screen's 8px gap puts it 10px under
-   the action tiles — the tiles' own gap — so it reads as part of the
-   launcher. Tokens only: --card, --line and --green-ink are each retuned for
+   Start New Round, so it reads as part of the launcher, above the "Or start
+   something else" list. Tokens only: --card, --line and --green-ink are each retuned for
    dark and glare, and the text takes the theme's ink. */
 .play-again {
   display: flex;

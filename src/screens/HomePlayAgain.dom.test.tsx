@@ -8,7 +8,8 @@ import { makeRound, player, scrambleRound } from '../games/testFixtures';
 
 /**
  * Home's Play again card: last round's course, crew and games, offered under
- * the launcher tiles when nothing is being played.
+ * Start New Round (above "Or start something else") when nothing is being
+ * played.
  */
 
 afterEach(() => {
@@ -24,6 +25,7 @@ const renderHome = (onPlayAgain?: (r: Round) => void) =>
       onNew={noop}
       onNewLeague={noop}
       onNewScramble={noop}
+      onNewTrip={noop}
       onResume={noop}
       onViewResults={noop}
       onStats={noop}
@@ -52,7 +54,7 @@ const follows = (a: Element, b: Element) =>
   !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
 
 describe('Home: Play again', () => {
-  it('offers the last round under the action tiles, and hands it over when tapped', () => {
+  it('offers the last round under Start New Round, and hands it over when tapped', () => {
     const r = finished('a');
     saveRounds([r, finished('b', { course: 'Elsewhere' })]);
     const onPlayAgain = vi.fn();
@@ -61,7 +63,9 @@ describe('Home: Play again', () => {
     const button = card()!;
     expect(button.textContent).toContain('Sunset Ridge · Mike, Dave, Chris & Tom');
     expect(button.textContent).toContain('$5 Nassau · $2 Skins');
-    expect(follows(container.querySelector('.home-actions')!, button)).toBe(true);
+    // Directly under Start New Round, above "Or start something else".
+    expect(follows(screen.getByRole('button', { name: 'Start New Round' }), button)).toBe(true);
+    expect(follows(button, container.querySelector('.home-more')!)).toBe(true);
 
     fireEvent.click(button);
     expect(onPlayAgain).toHaveBeenCalledTimes(1);
