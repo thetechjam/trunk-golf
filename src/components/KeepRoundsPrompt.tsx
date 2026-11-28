@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { saveSettings } from '../storage';
+import { useEffect, useId, useRef, useState } from 'react';
+import { getSettings, saveSettings } from '../storage';
 import { offerBackup } from '../backup';
 import { currentBackupStatus, type BackupStatus } from '../backupStatus';
-import { installSteps } from '../platform';
+import { isIOS } from '../platform';
+import { CheckIcon } from '../icons';
+import { AddToHomeSteps } from './AddToHomeSteps';
 import { InstallPrompt } from './InstallPrompt';
 
 /**
@@ -13,88 +15,97 @@ export function keepRoundsPromptDue(): boolean {
   return currentBackupStatus().due;
 }
 
-const BROWSER_FIRST =
-  'Some browsers, Safari among them, delete a site’s data after seven days without a visit. Add Trunk to your home screen and it keeps your rounds — and save a backup, so a copy lives outside this browser.';
-
 /** The heading and body, which depend on where Trunk is running and whether it has asked before. */
-function promptCopy(status: BackupStatus): { heading: string; body: string } {
+function promptCopy(status: BackupStatus, place: string): { heading: string; body: string } {
   const { risk, first, unbacked } = status;
   if (first) {
-    const heading = 'Keep these rounds.';
-    if (risk === 'native') {
-      return {
-        heading,
-        body: 'Your rounds are kept on this phone. Save a backup too — it is the copy that survives a new phone.',
-      };
-    }
-    if (risk === 'installed') {
-      return {
-        heading,
-        body: 'Trunk is on your home screen, so your browser keeps these rounds. Save a backup too — it is the copy that survives a new phone.',
-      };
-    }
+    const heading = 'Keep your rounds safe';
     if (risk === 'evicting') {
       return {
         heading,
-        body: 'Safari deletes a site’s data after seven days without a visit. Save a backup first. Then add Trunk to your home screen and restore the backup there — the home screen app starts empty.',
+        body: `Right now your rounds live only in Safari, which can clear them after a week away. Save a backup (takes a few seconds), then add Trunk to your ${place}.`,
       };
     }
-    return { heading, body: BROWSER_FIRST };
+    if (risk === 'browser') {
+      return {
+        heading,
+        body: 'Right now your rounds live only in this browser. Save a backup (takes a few seconds) so there’s a copy outside it.',
+      };
+    }
+    return {
+      heading,
+      body: 'Your rounds live only on this phone. Save a backup (takes a few seconds) — it’s the copy that survives a new phone.',
+    };
   }
 
-  const heading = unbacked === 1 ? '1 round isn’t backed up.' : `${unbacked} rounds aren’t backed up.`;
+  const one = unbacked === 1;
+  const heading = one ? '1 round isn’t backed up' : `${unbacked} rounds aren’t backed up`;
+  const lives = one ? 'It lives' : 'They live';
   if (risk === 'evicting') {
     return {
       heading,
-      body: 'Safari can delete them after seven days without a visit. Save a backup, so a copy lives outside this browser.',
+      body: `${lives} only in Safari, which can clear ${one ? 'it' : 'them'} after a week away. Save a backup (takes a few seconds).`,
     };
   }
   if (risk === 'browser') {
-    return {
-      heading,
-      body: 'They are saved in this browser and nowhere else. Save a backup, so a copy lives outside it.',
-    };
+    return { heading, body: `${lives} only in this browser. Save a backup so there’s a copy outside it.` };
   }
-  return {
-    heading,
-    body: 'They are saved on this phone and nowhere else. Save a backup — it is the copy that survives a new phone.',
-  };
+  return { heading, body: `${lives} only on this phone. Save a backup — it’s the copy that survives a new phone.` };
 }
 
-/** In a Safari tab the backup is only half the job: the home screen app starts empty. */
-function savedCopy(status: BackupStatus): string {
-  if (status.risk !== 'evicting') return 'Backup saved.';
-  const steps = installSteps();
-  return `Backup saved. Next: add Trunk to your home screen.${steps ? ` ${steps}` : ''} Then open it and restore the backup.`;
-}
+/** "Not now" this many times on reminders, and the card offers to stop asking. */
+const OFFER_STOP_AFTER = 2;
 
 /**
- * Safari deletes a site's data after seven days without a visit unless the
- * app is on the home screen. This asks after the first finished round, and
- * reminds later while rounds go unbacked: save a backup, and add Trunk to the
- * home screen.
+ * Asks for a backup after the first finished round, and reminds later while
+ * rounds go unbacked. In a Safari tab, where a site's data can be cleared
+ * after a week away, a saved backup is followed by the way to the home screen
+ * — the home screen app starts empty, and the backup is how the rounds get
+ * there.
  *
  * Every write goes through `saveSettings`, which returns null on a refused
  * write rather than throwing. A refused write still closes the card for the
  * session; it asks again next launch, which is the honest outcome of an
  * answer that could not be stored.
  *
- * The install button is the browser's own when it offers one; the sentence
- * is the same hint Home already carries, which is what iOS gets instead.
+ * The install button is the browser's own when it offers one (Chromium);
+ * iOS gets the drawn steps after the backup instead.
  */
 export function KeepRoundsPrompt({ offerInstall = true }: { offerInstall?: boolean } = {}) {
   const [status] = useState(() => currentBackupStatus());
+  const [snoozes] = useState(() => getSettings().backupNudgeSnoozeCount);
   const [visible, setVisible] = useState(status.due);
-  const [message, setMessage] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [backedUp, setBackedUp] = useState(false);
+  const [showHow, setShowHow] = useState(false);
+  const savedRef = useRef<HTMLParagraphElement>(null);
+  const titleId = useId();
+
+  // The Save button unmounts with the save; without this, keyboard and
+  // VoiceOver users are left on <body>.
+  useEffect(() => {
+    if (backedUp) savedRef.current?.focus();
+  }, [backedUp]);
+
   if (!visible) return null;
 
-  const { heading, body } = promptCopy(status);
+  const evicting = status.risk === 'evicting';
+  const place = isIOS() ? 'Home Screen' : 'Dock';
+  const { heading, body } = promptCopy(status, place);
   const installed = status.risk === 'installed' || status.risk === 'native';
+  const offerStop = !status.first && snoozes >= OFFER_STOP_AFTER;
 
-  const close = () => {
-    if (!backedUp) saveSettings({ firstFinishPromptDismissed: true, backupNudgeSnoozedAt: Date.now() });
+  const notNow = () => {
+    saveSettings({
+      firstFinishPromptDismissed: true,
+      backupNudgeSnoozedAt: Date.now(),
+      backupNudgeSnoozeCount: snoozes + 1,
+    });
+    setVisible(false);
+  };
+
+  const stopReminding = () => {
+    saveSettings({ backupRemindersOff: true, firstFinishPromptDismissed: true });
     setVisible(false);
   };
 
@@ -103,44 +114,80 @@ export function KeepRoundsPrompt({ offerInstall = true }: { offerInstall?: boole
     if (!result.ok) {
       if (result.aborted) return;
       setFailed(true);
-      setMessage("That backup couldn't be saved.");
       return;
     }
     // A backup is the answer the prompt was asking for. `offerBackup` records
-    // when; this records that the first ask is answered. It stays on screen
-    // to say so, with a button that closes it.
-    saveSettings({ firstFinishPromptDismissed: true });
-    setBackedUp(true);
+    // when; this records that the first ask is answered, and starts the
+    // "Not now" count over.
+    saveSettings({ firstFinishPromptDismissed: true, backupNudgeSnoozeCount: 0 });
     setFailed(false);
-    setMessage(savedCopy(status));
+    setBackedUp(true);
   };
 
+  if (backedUp) {
+    return (
+      <div className="keep-rounds">
+        <p className="keep-saved" role="status" tabIndex={-1} ref={savedRef}>
+          <CheckIcon size={20} />
+          <span>Backup saved</span>
+        </p>
+        {evicting && (
+          <p>
+            Next, add Trunk to your {place}. It starts empty there, so open it and restore this
+            backup.
+          </p>
+        )}
+        {evicting && showHow && (
+          <>
+            <AddToHomeSteps />
+            <p>Then open Trunk from your {place} and tap Restore from a backup.</p>
+          </>
+        )}
+        {offerInstall && !installed && <InstallPrompt />}
+        <div className="keep-rounds-actions">
+          {evicting && !showHow && (
+            <button
+              type="button"
+              className="btn-secondary"
+              aria-expanded={false}
+              onClick={() => setShowHow(true)}
+            >
+              Show me how to add to {place}
+            </button>
+          )}
+          <button type="button" className="btn-secondary" onClick={() => setVisible(false)}>
+            Done
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="keep-rounds">
-      {/* The count was read on mount; once backed up it is stale, so the
-          status line below speaks alone. */}
-      {!backedUp && (
-        <>
-          <strong>{heading}</strong>
-          <p>{body}</p>
-        </>
-      )}
+    <section className="keep-rounds" aria-labelledby={titleId}>
+      <h2 className="keep-title" id={titleId}>
+        {heading}
+      </h2>
+      <p>{body}</p>
       {offerInstall && !installed && <InstallPrompt />}
       <div className="keep-rounds-actions">
-        {!backedUp && (
-          <button type="button" className="btn-secondary" onClick={save}>
-            Save a backup
+        <button type="button" className="btn-secondary" onClick={save}>
+          Save a backup
+        </button>
+        <button type="button" className="btn-ghost" onClick={notNow}>
+          Not now
+        </button>
+        {offerStop && (
+          <button type="button" className="btn-ghost" onClick={stopReminding}>
+            Don’t remind me
           </button>
         )}
-        <button type="button" className="btn-ghost" onClick={close}>
-          {backedUp ? 'Done' : 'Not now'}
-        </button>
       </div>
-      {message && (
-        <p className={`fb-status${failed ? ' bad' : ''}`} role="status">
-          {message}
+      {failed && (
+        <p className="fb-status bad" role="status">
+          That backup couldn't be saved.
         </p>
       )}
-    </div>
+    </section>
   );
 }
