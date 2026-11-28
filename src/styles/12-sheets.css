@@ -391,6 +391,8 @@
 .sc-edit-clear {
   min-height: var(--tap);
   width: 100%;
+  /* No wider than the chip pad above it (.score-chips-wrap, 06-play.css). */
+  max-width: 452px;
 }
 /* Under the grid: nothing on the cells says they can be tapped. */
 .sc-hint {
