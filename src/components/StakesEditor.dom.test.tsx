@@ -50,7 +50,7 @@ describe('the stake fields', () => {
     expect(field.value).toBe('3');
   });
 
-  it('keep the accessible name the Money row has always had', () => {
+  it('keep the accessible name the Board and Results fields have always had', () => {
     render(<Harness seen={[]} />);
     // The label's text runs together ("Skins$per skin"); what matters is that
     // it is still named by the game, the $ and the unit, unlike a tile field.

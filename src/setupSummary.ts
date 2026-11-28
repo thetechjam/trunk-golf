@@ -7,7 +7,8 @@ import { gameMeta } from './games';
  * These carry real weight: a row showing "18 holes · par 72" tells a
  * first-time user the question is already answered, which is what makes
  * skipping it feel safe rather than negligent. Every function therefore
- * returns a meaningful string for the empty case — never ''.
+ * returns a meaningful string for the empty case — never '' — except
+ * `gamesStakes`, a tail whose absence is the signal.
  */
 
 export function courseSummary(course: string): string {
