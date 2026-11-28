@@ -147,8 +147,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   three short cards — add the group, tap the scores, settle up — moved by Back
   and Next or a sideways swipe, with the 80-second video and a link to the
   full rules. The last card's "Start a round" goes straight to New Round.
-- **One-line descriptions under League and Scramble on Home**: "A weekly 2-on-2
-  night" and "Everyone hits, best ball". The buttons keep their names.
+- **Start a trip from Home.** Under Start New Round, "Or start something
+  else" lists Trip ("Several rounds this weekend. Keep score each day, settle
+  the money once at the end."), Scramble ("Everyone hits, best ball") and
+  League ("A weekly 2-on-2 night"). Trip opens New Round with the trip's name
+  ready to type; if a trip is already going, it opens on that trip. Scramble
+  and League open the screens they always did.
 - **A note on New Round when handicaps are in play and the course has no
   stroke indexes**: the strokes would fall in hole order, and tapping the
   note opens the course, or Holes & pars, to set them.
@@ -178,11 +182,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Stakes go on the game tiles in New Round.** A picked game's tile shows
-  its own `$` field and unit under the name ("$ 5 per skin"), the same stake
-  the Money row edits; last time's stakes still fill in. While a picked game
+  its own `$` field and unit under the name ("$ 5 per skin"); last time's
+  stakes still fill in. While a picked game
   has no stake, a line under the tiles says so ("No stakes yet — add a $
   amount to track who owes what.") — a nudge, not an error, and a round at $0
-  starts as before. The Money row is unchanged.
+  starts as before.
+- **Home's League and Scramble tiles are now rows in that list**, each with a
+  line saying what it is. Start New Round is still one tap, and Play again
+  sits directly under it. While a round is in play the list is folded behind
+  "Or start something else", so Resume stays the thing to press.
+- **New Round no longer has a Money row.** Stakes are typed on the game
+  tiles, and the closed Games row shows them ("Nassau, Skins · $5 / $2").
+  With nothing staked the row shows the games alone and the line under the
+  tiles still says so. Stakes can still be changed from the Board and
+  Results.
+- **Trip is no longer a row in New Round.** With no trip, a line above Start
+  Round reads "Playing a few rounds this weekend? Add to a trip"; tapping it
+  shows the same trip chips and name field. With a trip going, New Round says
+  "On the Myrtle ’27 trip" with a Change button. A new round still joins the
+  trip being played without being asked.
 - **"Scoring" in New Round is now "Handicap options"**, folded closed under
   the game tiles with a one-line summary of what is in play ("Net · full
   allowance", "Net · 90% four-ball", "Gross" or "Custom"). The gross/net and
