@@ -215,8 +215,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The Hole tab says less and explains more.** The "TAP" tag beside a player
   with no score is gone; the press panel says what a press is until the
   group's first one; a finished Nassau with no bet won reads "No bets won"
-  rather than "All bets open" (in the share text and image too); and a
-  finished round's scorecard says "Results", not "Finish".
+  rather than "All bets open" (in the share text and image too); and on a
+  finished round the header button on the Play screen says "Results", not
+  "Finish".
 
 ### Fixed
 - **A phone turned sideways lays out the Hole tab's strips properly.** The
