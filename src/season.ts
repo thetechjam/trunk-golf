@@ -50,6 +50,11 @@ export interface Season {
   rounds: number;
   /** Of those, the ones with a stake on them. */
   moneyRounds: number;
+  /**
+   * League nights counted for stats this year but left out of the season, so
+   * the card can say why its round counts are lower than the player cards'.
+   */
+  leagueNights: number;
   /** Biggest net first. */
   players: SeasonPlayer[];
   /** Most shared rounds first. */
@@ -59,23 +64,33 @@ export interface Season {
 /** The most players the head-to-head covers: a four-ball's worth of pairs. */
 const CREW = 4;
 
+const regular = (r: Round) => !r.options.league && !isScramble(r);
+
 /**
  * The year to show: the one picked on the segment row, or with "All" the
- * latest year anything was played in. `null` when there are no rounds.
+ * latest year with a regular round played for money — so a January league
+ * night, or a friendly with nothing on it, does not hide last year's season
+ * before this year's first money round. Without one, the latest year
+ * anything was played in (the card then has nothing to show). `null` when
+ * there are no rounds.
  */
 export function seasonYear(counted: Round[], pick: number | 'all'): number | null {
   if (pick !== 'all') return pick;
-  return roundYears(counted)[0] ?? null;
+  const years = roundYears(counted);
+  const withMoney = years.find(
+    (y) => tripLedger(filterByYear(counted, y).filter(regular)).moneyRounds > 0
+  );
+  return withMoney ?? years[0] ?? null;
 }
-
-const regular = (r: Round) => !r.options.league && !isScramble(r);
 
 /**
  * The season's figures. `counted` is the Stats screen's population — rounds
  * that count for stats, newest first.
  */
 export function computeSeason(counted: Round[], year: number): Season {
-  const rounds = filterByYear(counted, year).filter(regular);
+  const inYear = filterByYear(counted, year);
+  const rounds = inYear.filter(regular);
+  const leagueNights = inYear.filter((r) => !!r.options.league).length;
   const stats = computeStats(rounds);
   const ledger = tripLedger(rounds);
 
@@ -173,5 +188,5 @@ export function computeSeason(counted: Round[], year: number): Season {
   }
   pairs.sort((p, q) => q.shared - p.shared || p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
 
-  return { year, rounds: stats.rounds, moneyRounds: ledger.moneyRounds, players, pairs };
+  return { year, rounds: stats.rounds, moneyRounds: ledger.moneyRounds, leagueNights, players, pairs };
 }

@@ -60,6 +60,18 @@ beforeEach(() => localStorage.clear());
 afterEach(cleanup);
 
 describe('Stats: this season', () => {
+  it('says league nights are not counted when the year had one', () => {
+    const night = round('n', `${THIS_YEAR}-06-02`, { Tom: 3, Mike: 0 });
+    night.options.league = { teams: [] } as never;
+    show([night, round('a', `${THIS_YEAR}-06-01`, { Tom: 0, Mike: 1 })]);
+    const season = card()!;
+    // The player cards below count the league night; the season does not.
+    expect(within(season).getByText(`${THIS_YEAR} · 1 round`)).toBeTruthy();
+    expect(season.querySelector('.season-note')?.textContent).toBe(
+      'Net money over 1 round with stakes. League nights not counted.'
+    );
+  });
+
   it('shows the year’s money, signed, with the crew head to head', () => {
     show([
       round('a', `${THIS_YEAR}-06-01`, { Tom: 0, Mike: 1 }),

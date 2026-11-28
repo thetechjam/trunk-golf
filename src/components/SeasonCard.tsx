@@ -53,6 +53,7 @@ export function SeasonCard({ season, current, colorFor }: Props) {
       </ul>
       <p className="season-note">
         Net money over {plural(season.moneyRounds, 'round')} with stakes.
+        {season.leagueNights > 0 && ' League nights not counted.'}
       </p>
 
       {season.pairs.length > 0 && (

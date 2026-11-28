@@ -55,6 +55,19 @@ describe('seasonYear', () => {
     expect(seasonYear([rounds[1]], 'all')).toBe(2025);
   });
 
+  it('with "All", skips a newer year that has only league nights or rounds with nothing on them', () => {
+    const league = sp('l', '2027-01-10', { Al: 0, Bo: 2 }, {
+      options: { ...sp('x', '2027-01-01', {}).options, league: { teams: [] } as never },
+    });
+    const friendly = free('f', '2027-01-12', { Al: 0, Bo: 2 });
+    const money = sp('m', '2026-09-01', { Al: 0, Bo: 2 });
+    expect(seasonYear([friendly, league, money], 'all')).toBe(2026);
+    // Picked on the segment row, the year is still the one picked.
+    expect(seasonYear([friendly, league, money], 2027)).toBe(2027);
+    // No money anywhere: the latest year, as before.
+    expect(seasonYear([friendly, league], 'all')).toBe(2027);
+  });
+
   it('is null with no rounds', () => {
     expect(seasonYear([], 'all')).toBeNull();
   });
@@ -79,6 +92,7 @@ describe('computeSeason', () => {
     ]);
     expect(season.rounds).toBe(3);
     expect(season.moneyRounds).toBe(3);
+    expect(season.leagueNights).toBe(0);
   });
 
   it('leaves out other years, league nights, scrambles and abandoned rounds', () => {
@@ -110,6 +124,9 @@ describe('computeSeason', () => {
       ['Mike', -5],
     ]);
     expect(computeSeason(counted, 2025).players.map((p) => p.money)).toEqual([5, -5]);
+    // Counted for the year's league nights, so the card can say they are out.
+    expect(season.leagueNights).toBe(1);
+    expect(computeSeason(counted, 2025).leagueNights).toBe(0);
   });
 
   it('matches names however they were typed, and shows the latest spelling', () => {
