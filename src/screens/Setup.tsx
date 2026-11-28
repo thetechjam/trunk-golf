@@ -21,6 +21,8 @@ import { nameKey, nearMatches, resolveName, peopleOn } from '../people';
 import { lastSetup } from '../lastSetup';
 import { isWolfMultiplier, wholeStrokes, MAX_WOLF_MULTIPLIER } from '../numberInput';
 import { useCourse } from './setup/useCourse';
+import { courseStateFromRound } from './setup/courseState';
+import { lastCourseRound, seedFrom } from './setup/prefill';
 import { PlayersSection } from './setup/PlayersSection';
 import { CourseSection, HolesSection } from './setup/CourseSection';
 import { GamesSection, type SidePick } from './setup/GamesSection';
@@ -32,6 +34,12 @@ type PendingPick = Omit<SidePick, 'mode'> & { mode?: SidePick['mode'] };
 interface Props {
   onCancel: () => void;
   onStart: (round: Round) => void;
+  /**
+   * A finished round to play again (Home's "Play again"): its players, course,
+   * games, stakes and teams fill the screen, and nothing is saved until Start
+   * Round. Read on mount only.
+   */
+  again?: Round | null;
 }
 
 /**
@@ -43,15 +51,32 @@ interface Props {
  * because they do not. Each row's body is its own component under `setup/`,
  * so this file is the state, the rules for starting a round, and the layout.
  */
-export function Setup({ onCancel, onStart }: Props) {
+export function Setup({ onCancel, onStart, again = null }: Props) {
   // What the group played last time: the games, the stakes and the options
-  // start where they were left, the way the players already did. Read once,
-  // on mount, like the saved rounds below.
-  const [remembered] = useState(() => lastSetup(listRounds()));
-  const [players, setPlayers] = useState<Player[]>([
-    { id: uid(), name: '' },
-    { id: uid(), name: '' },
-  ]);
+  // start where they were left, the way the players already did, and so does
+  // the course when last time had one. Playing a particular round again takes
+  // all of that from that round instead, and the players and teams too. Read
+  // once, on mount, like the saved rounds below.
+  const [start0] = useState(() => {
+    const rounds = again ? [] : listRounds();
+    return {
+      seed: again ? seedFrom(again) : null,
+      remembered: lastSetup(again ? [again] : rounds),
+      course: courseStateFromRound(again ?? lastCourseRound(rounds)),
+    };
+  });
+  const { seed, remembered } = start0;
+  // The name of the course the screen opened on, for "Same course as last
+  // time" — shown only while that is still the course on screen.
+  const rememberedCourse = start0.course?.course.trim() ?? '';
+  const [players, setPlayers] = useState<Player[]>(() =>
+    seed && seed.players.length > 0
+      ? seed.players
+      : [
+          { id: uid(), name: '' },
+          { id: uid(), name: '' },
+        ]
+  );
   /** Handicap allowance per game, as a percentage. Absent entries are 100%. */
   const [allowanceByGame, setAllowanceByGame] = useState<Partial<Record<GameType, number>>>(
     () => remembered?.allowanceByGame ?? {}
@@ -75,15 +100,17 @@ export function Setup({ onCancel, onStart }: Props) {
     sideA: '',
     sideB: '',
     assign: {},
+    ...seed?.nassau,
   }));
   const [match, setMatch] = useState<PendingPick>(() => ({
     mode: remembered?.games.includes('matchPlay') ? remembered.matchMode : undefined,
     sideA: '',
     sideB: '',
     assign: {},
+    ...seed?.match,
   }));
   // Vegas is 2v2 only — there is no side to choose, just who is with whom.
-  const [vegasAssign, setVegasAssign] = useState<Assign>({});
+  const [vegasAssign, setVegasAssign] = useState<Assign>(() => seed?.vegasAssign ?? {});
   // Only the games the user actually changed. An absent entry follows the
   // round default, so leaving this alone reproduces the old behaviour exactly
   // — including a handicap added later switching the untouched games over.
@@ -147,7 +174,7 @@ export function Setup({ onCancel, onStart }: Props) {
     loadFromScan,
     saveFavorite,
     removeCourse,
-  } = useCourse({ openRow, setError });
+  } = useCourse({ openRow, setError, initial: start0.course });
   const { rated } = derived;
 
   const updatePlayer = (id: string, patch: Partial<Player>) =>
@@ -427,6 +454,14 @@ export function Setup({ onCancel, onStart }: Props) {
         </button>
       </header>
 
+      {again && (
+        <p className="hint-inline" role="status">
+          {again.course?.trim()
+            ? 'Same players, course and games as last time. Change anything, then start.'
+            : 'Same players and games as last time. Change anything, then start.'}
+        </p>
+      )}
+
       <PlayersSection
         players={players}
         showNet={showNet}
@@ -461,6 +496,8 @@ export function Setup({ onCancel, onStart }: Props) {
             onSend={setSendingCourse}
             onRemove={removeCourse}
             note={cs.savedNote?.row === 'course' ? cs.savedNote.text : null}
+            sameAsLast={!!rememberedCourse && cs.course.trim() === rememberedCourse}
+            onElsewhere={() => dispatch({ type: 'reset' })}
           />
         </SetupRow>
 

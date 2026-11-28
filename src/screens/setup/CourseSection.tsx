@@ -22,12 +22,50 @@ interface CourseProps {
   onRemove: (id: string) => void;
   /** The confirmation for this row, when the last thing done happened here. */
   note: string | null;
+  /** The course on screen is the one New Round remembered from last time. */
+  sameAsLast?: boolean;
+  /** Clears the remembered course back to a blank one. */
+  onElsewhere?: () => void;
 }
 
 /** The body of New Round's Course row: the search field and the saved courses. */
-export function CourseSection({ course, onCourse, onPick, onScan, courses, onLoad, onSend, onRemove, note }: CourseProps) {
+export function CourseSection({
+  course,
+  onCourse,
+  onPick,
+  onScan,
+  courses,
+  onLoad,
+  onSend,
+  onRemove,
+  note,
+  sameAsLast = false,
+  onElsewhere,
+}: CourseProps) {
   return (
     <>
+      {sameAsLast && onElsewhere && (
+        <p className="hint-inline course-same">
+          Same course as last time.{' '}
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={(e) => {
+              // The button goes with the note; the search field, just below,
+              // is where the next course is chosen, so that is where focus
+              // goes. Found before the reset re-renders the row.
+              const input = e.currentTarget
+                .closest('p')
+                ?.parentElement?.querySelector<HTMLInputElement>('.course-search input');
+              onElsewhere();
+              input?.focus();
+            }}
+          >
+            Play somewhere else
+          </button>
+        </p>
+      )}
+
       <CourseSearch value={course} onChange={onCourse} onPick={onPick} />
 
       <ScanCard courseName={course} onApply={onScan} />
