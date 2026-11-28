@@ -53,6 +53,12 @@ const openRow = async (user: ReturnType<typeof userEvent.setup>, label: string) 
   if (head && head.getAttribute('aria-expanded') !== 'true') await user.click(head);
 };
 
+/** Unfolds the handicap options under the game tiles, if they are folded. */
+const openHandicapOptions = async (user: ReturnType<typeof userEvent.setup>) => {
+  const head = await screen.findByRole('button', { name: /Handicap options/ });
+  if (head.getAttribute('aria-expanded') !== 'true') await user.click(head);
+};
+
 const rowOpen = (label: string) =>
   [...document.querySelectorAll<HTMLElement>('.setup-row-head')]
     .find((el) => el.textContent?.includes(label))
@@ -636,6 +642,237 @@ describe('the game cards', () => {
   });
 });
 
+/**
+ * The stake on the tile it belongs to.
+ *
+ * Money used to live only in its own collapsed row, below the games, and a
+ * first round defaulted to $0 without anything saying so. A picked game now
+ * carries its stake under its name, writing the same value the Money row does.
+ */
+describe('stakes on the game tiles', () => {
+  const twoNamed = async (user: ReturnType<typeof userEvent.setup>) => {
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder^="Player"]');
+    await user.type(inputs[0], 'Al');
+    await user.type(inputs[1], 'Bo');
+  };
+  const tileStake = (label: string, unit: string) =>
+    screen.queryByLabelText<HTMLInputElement>(`${label} stake, $ per ${unit}`);
+  const moneySummary = () =>
+    [...document.querySelectorAll<HTMLElement>('.setup-row-head')]
+      .find((el) => el.textContent?.includes('Money'))!
+      .querySelector('.setup-row-summary')!.textContent;
+  const prompt = () => document.querySelector('.stakes-prompt')?.textContent ?? null;
+
+  it('shows a field on a picked tile only, named for its game and unit', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await openRow(user, 'Games');
+    expect(tileStake('Skins', 'skin')).not.toBeNull();
+    expect(tileStake('Wolf', 'point')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Wolf' }));
+    expect(tileStake('Wolf', 'point')).not.toBeNull();
+  });
+
+  it('keeps the field out of the pick button', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await openRow(user, 'Games');
+    expect(tileStake('Skins', 'skin')!.closest('button')).toBeNull();
+  });
+
+  it('writes the same stake the Money row does, and starts the round with it', async () => {
+    const user = userEvent.setup();
+    const started: Round[] = [];
+    render(<Setup onCancel={() => {}} onStart={(r) => started.push(r)} />);
+    await twoNamed(user);
+    await openRow(user, 'Games');
+    await user.type(tileStake('Skins', 'skin')!, '5');
+    expect(moneySummary()).toBe('$5 Skins');
+    await user.click(screen.getByRole('button', { name: /Start Round/i }));
+    expect(started[0].options.stakes.skins).toBe(5);
+  });
+
+  it('agrees with the Money row field both ways', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await openRow(user, 'Games');
+    await user.type(tileStake('Skins', 'skin')!, '5');
+    await user.tab();
+    await openRow(user, 'Money');
+    const money = screen.getByLabelText<HTMLInputElement>(/^Skins\s*\$\s*per skin$/);
+    expect(money.value).toBe('5');
+    expect(tileStake('Skins', 'skin')!.value).toBe('5');
+
+    await user.clear(money);
+    await user.type(money, '3');
+    await user.tab();
+    expect(tileStake('Skins', 'skin')!.value).toBe('3');
+  });
+
+  it('keeps a stake through deselecting and reselecting the game', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await openRow(user, 'Games');
+    await user.type(tileStake('Skins', 'skin')!, '5');
+    await user.tab();
+    await user.click(screen.getByRole('button', { name: 'Skins' }));
+    expect(tileStake('Skins', 'skin')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Skins' }));
+    expect(tileStake('Skins', 'skin')!.value).toBe('5');
+  });
+
+  it('prefills last time’s stakes on the tiles', async () => {
+    localStorage.setItem(
+      'press.rounds.v1',
+      JSON.stringify([
+        {
+          id: 'r1',
+          course: 'Muni',
+          date: '2026-09-01',
+          createdAt: 1,
+          updatedAt: 1,
+          players: [{ id: 'p1', name: 'Alex' }, { id: 'p2', name: 'Sam' }],
+          holes: realCard18(),
+          games: ['nassau', 'skins'],
+          options: {
+            useNet: false,
+            stablefordMode: 'standard',
+            loneWolfMultiplier: 2,
+            blindWolfMultiplier: 3,
+            stakes: { nassau: 5, skins: 2 },
+          },
+          scores: {},
+          wolf: {},
+          status: 'finished',
+        },
+      ])
+    );
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await openRow(user, 'Games');
+    const nassau = tileStake('Nassau', 'bet')!;
+    expect(nassau.value).toBe('5');
+    expect(tileStake('Skins', 'skin')!.value).toBe('2');
+    // "per bet", not "per bet (×3)": the count is wrong on a nine and with presses.
+    expect(nassau.closest('.game-stake')!.querySelector('.per')!.textContent).toBe('per bet');
+  });
+
+  describe('the no-stake prompt', () => {
+    it('invites a first round to add a stake, and goes once there is one', async () => {
+      const user = userEvent.setup();
+      render(<Setup onCancel={() => {}} onStart={() => {}} />);
+      await openRow(user, 'Games');
+      expect(prompt()).toBe('No stakes yet — add a $ amount to track who owes what.');
+      await user.type(tileStake('Skins', 'skin')!, '5');
+      expect(prompt()).toBeNull();
+    });
+
+    it('names the picked game that still has no stake', async () => {
+      const user = userEvent.setup();
+      render(<Setup onCancel={() => {}} onStart={() => {}} />);
+      await openRow(user, 'Games');
+      await user.type(tileStake('Skins', 'skin')!, '5');
+      await user.click(screen.getByRole('button', { name: 'Wolf' }));
+      expect(prompt()).toBe('No stake on Wolf yet — it won’t count toward the money.');
+    });
+
+    it('is not a live region, and never blocks Start', async () => {
+      const user = userEvent.setup();
+      const onStart = vi.fn();
+      render(<Setup onCancel={() => {}} onStart={onStart} />);
+      await twoNamed(user);
+      await openRow(user, 'Games');
+      expect(document.querySelector('.stakes-prompt')!.getAttribute('role')).toBeNull();
+      await user.click(screen.getByRole('button', { name: /Start Round/i }));
+      expect(onStart).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('.error')).toBeNull();
+    });
+  });
+});
+
+/**
+ * The gross/net and allowance controls, folded behind one head that says
+ * what they are set to. The defaults suit most groups; the prose and the rows
+ * used to sit between the tiles and the teams on every handicap round.
+ */
+describe('Handicap options', () => {
+  const withHandicap = async (user: ReturnType<typeof userEvent.setup>) => {
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder^="Player"]');
+    await user.type(inputs[0], 'Al');
+    await user.type(screen.getByLabelText(/^Handicap for Al$/i), '14');
+  };
+  const head = () => screen.queryByRole('button', { name: /Handicap options/ });
+  const summary = () => document.querySelector('.hcp-options-summary')!.textContent;
+
+  it('are not there until somebody has a handicap', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await openRow(user, 'Games');
+    expect(head()).toBeNull();
+    await withHandicap(user);
+    expect(head()).not.toBeNull();
+  });
+
+  it('start folded, saying the defaults are in play', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await withHandicap(user);
+    await openRow(user, 'Games');
+    expect(head()!.getAttribute('aria-expanded')).toBe('false');
+    expect(summary()).toBe('Net · full allowance');
+    expect(document.querySelector('.score-mode-row')).toBeNull();
+    // Its own head, not a setup row's: the row helpers must not find it.
+    expect(head()!.classList.contains('setup-row-head')).toBe(false);
+  });
+
+  it('open onto the per-game rows', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await withHandicap(user);
+    await openRow(user, 'Games');
+    await openHandicapOptions(user);
+    expect(head()!.getAttribute('aria-expanded')).toBe('true');
+    expect(document.querySelector('#hcp-options-body .score-mode-row')).not.toBeNull();
+  });
+
+  it('say Gross once the only handicap game is played off the card', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await withHandicap(user);
+    await openRow(user, 'Games');
+    await openHandicapOptions(user);
+    await user.click(screen.getByRole('button', { name: 'Gross' }));
+    expect(summary()).toBe('Gross');
+  });
+
+  it('say Custom when one game is gross and another net', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await withHandicap(user);
+    await openRow(user, 'Games');
+    await user.click(screen.getByRole('button', { name: 'Stroke Play' }));
+    await openHandicapOptions(user);
+    const skinsRow = [...document.querySelectorAll<HTMLElement>('.score-mode-row')].find(
+      (el) => el.querySelector('.score-mode-name')?.textContent === 'Skins'
+    )!;
+    await user.click(within(skinsRow).getByRole('button', { name: 'Gross' }));
+    expect(summary()).toBe('Custom');
+  });
+
+  it('name the four-ball 90% a four-player match falls back to', async () => {
+    const user = userEvent.setup();
+    render(<Setup onCancel={() => {}} onStart={() => {}} />);
+    await user.click(screen.getByRole('button', { name: /Add player/i }));
+    await user.click(screen.getByRole('button', { name: /Add player/i }));
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder^="Player"]');
+    for (const [i, name] of ['Al', 'Bo', 'Cy', 'Di'].entries()) await user.type(inputs[i], name);
+    await user.type(screen.getByLabelText(/^Handicap for Al$/i), '14');
+    await openRow(user, 'Games');
+    await user.click(screen.getByRole('button', { name: 'Match Play' }));
+    expect(summary()).toBe('Net · 90% four-ball');
+  });
+});
+
 describe('two players under one name', () => {
   it('are stopped at Start, since everything downstream would treat them as one', async () => {
     const user = userEvent.setup();
@@ -897,6 +1134,7 @@ describe('handicap allowances', () => {
     const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder^="Player"]');
     await user.type(inputs[0], 'Al');
     await user.type(screen.getByLabelText(/^Handicap for Al$/i), '14');
+    await openHandicapOptions(user);
 
     // Skins is on by default.
     await waitFor(() =>
@@ -910,6 +1148,7 @@ describe('handicap allowances', () => {
     const inputs = document.querySelectorAll<HTMLInputElement>('input[placeholder^="Player"]');
     await user.type(inputs[0], 'Al');
     await user.type(screen.getByLabelText(/^Handicap for Al$/i), '14');
+    await openHandicapOptions(user);
     await screen.findByLabelText(/Handicap allowance for Skins/i);
 
     // There are no handicap strokes to cut in a gross game.
@@ -929,6 +1168,7 @@ describe('handicap allowances', () => {
     await user.type(screen.getByLabelText(/^Handicap for Al$/i), '14');
     await openRow(user, 'Games');
     await user.click(screen.getByRole('button', { name: 'Match Play' }));
+    await openHandicapOptions(user);
 
     // Four players open on a four-ball: 90%, the figure matchAllowanceFor
     // falls back to.
@@ -1041,7 +1281,8 @@ describe('a Handicap Index and a course with no slope or rating', () => {
     await user.click(screen.getByRole('button', { name: /Same crew/ }));
     expect(warning()).not.toBeNull();
 
-    if (!document.querySelector('.score-mode-row')) await openRow(user, 'Games');
+    await openRow(user, 'Games');
+    await openHandicapOptions(user);
     await user.click(screen.getByRole('button', { name: 'Gross' }));
     await waitFor(() => expect(warning()).toBeNull());
   });

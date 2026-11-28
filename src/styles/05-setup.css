@@ -907,6 +907,95 @@
   margin-top: 0;
   margin-bottom: 10px;
 }
+/* A selected tile's stake, on a second line under the name. The tiles stay
+   two-across (a full-width selected tile would move the targets under the
+   thumb), so the inner width is ~137px at 390 and ~102px at 320: "$", the
+   field and a short unit share a line and a long unit ("per low round")
+   wraps under them. The grid stretches rows, so paired tiles stay level. */
+.game-stake {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  padding-bottom: 10px;
+  cursor: text;
+}
+.game-stake .dollar,
+.game-stake .per {
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+/* 44px tall at the inherited 16px, so iOS does not zoom on focus. The
+   border is ink-derived like .recent-chip's, for the same reason: --line is
+   1.74:1 in glare, and this sits on the tinted active tile. */
+.game-stake input {
+  width: 64px;
+  min-height: 44px;
+  padding: 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg);
+  border: 1px solid color-mix(in srgb, var(--ink) 52%, transparent);
+}
+/* A nudge under the tiles while a picked game has no stake — not an error. */
+.stakes-prompt {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: var(--fs-md);
+  text-align: left;
+}
+/* "Handicap options": the old Scoring card folded behind one head. Two
+   stacked lines rather than .setup-row-head's one, which truncated
+   "HANDICAP OPTIONS" beside its summary at 320–390px. Its own chevron class:
+   .setup-row-chevron rotates under any open .setup-row, which this is in. */
+.hcp-options-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hcp-options-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+/* Takes the .card h2 look so the section still reads as a heading. */
+.hcp-options-label {
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+}
+.hcp-options-summary {
+  color: var(--muted);
+  font-size: var(--fs-md);
+}
+.hcp-options-chevron {
+  color: var(--muted);
+  font-size: var(--fs-2xl);
+  line-height: 1;
+  transition: transform var(--swap) var(--ease-in-out);
+}
+.hcp-options.open .hcp-options-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .hcp-options-chevron {
+    transition: none;
+  }
+}
 /* A remembered stroke count on a rated course, with its clear. Same face as
    the derived figure beside an Index, so the two read as the same answer. */
 .player-recalled {
