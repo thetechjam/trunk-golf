@@ -66,7 +66,9 @@ describe('App — Play again', () => {
     expect(nameFields()).toEqual(['Mike', 'Dave', 'Chris', 'Tom']);
     expect(screen.getByText(/^Same players, course and games as last time/)).toBeTruthy();
     expect(screen.getByText('Sunset Ridge')).toBeTruthy();
-    expect(screen.getByText('$5 Nassau · $2 Skins')).toBeTruthy();
+    // The stakes ride on the closed Games row now that there is no Money row.
+    const summaries = [...document.querySelectorAll('.setup-row-summary')].map((e) => e.textContent);
+    expect(summaries).toContain('Nassau, Skins · $5 / $2');
     // Nothing is written until Start Round.
     expect(stored()).toHaveLength(1);
 
