@@ -823,6 +823,9 @@ describe('Handicap options', () => {
     expect(document.querySelector('.score-mode-row')).toBeNull();
     // Its own head, not a setup row's: the row helpers must not find it.
     expect(head()!.classList.contains('setup-row-head')).toBe(false);
+    // The body is not rendered while folded, so no aria-controls pointing
+    // at an id that is not in the document (SetupRow carries none either).
+    expect(head()!.hasAttribute('aria-controls')).toBe(false);
   });
 
   it('open onto the per-game rows', async () => {

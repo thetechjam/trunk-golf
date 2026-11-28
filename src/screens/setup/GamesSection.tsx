@@ -186,7 +186,6 @@ export function GamesSection({
             type="button"
             className="hcp-options-head"
             aria-expanded={hcpOpen}
-            aria-controls="hcp-options-body"
             onClick={() => setHcpOpen((o) => !o)}
           >
             <span className="hcp-options-text">

@@ -14,10 +14,10 @@ interface Props {
  * its own label, `$` and unit around it.
  *
  * The text being typed is shown as typed, and only a stake that can be
- * settled is stored (see stakeAmount). Clearing the box used to write 0 back
- * into it mid-edit, and a "-" or "1e9" went into the money. The draft lives
- * only while the field has focus, so two fields bound to the same stake (a
- * game tile and the Money row) always agree once neither is being typed in.
+ * settled is stored (see stakeAmount): a cleared box stays empty mid-edit, and
+ * a "-" or "1e9" never reaches the money. The draft lives only while the field
+ * has focus, so two fields bound to the same stake (a game tile and the Money
+ * row) always agree once neither is being typed in.
  */
 export function StakeInput({ value, onCommit, 'aria-label': ariaLabel }: Props) {
   const [draft, setDraft] = useState<string | null>(null);
