@@ -52,22 +52,30 @@ export function Walkthrough({ onClose, onStart, onRules }: Props) {
   const [step, setStep] = useState(0);
   const changedAt = useRef(0);
   const swipeFrom = useRef<{ x: number; y: number } | null>(null);
-  const nextBtn = useRef<HTMLButtonElement>(null);
-  const startBtn = useRef<HTMLButtonElement>(null);
-  // Set when Next is pressed with focus on it, so focus can follow to
-  // "Start a round", which replaces it on the last card.
-  const followFocus = useRef(false);
+  const walk = useRef<HTMLDivElement>(null);
+  // Next, or "Start a round" in its place on the last card.
+  const primaryBtn = useRef<HTMLButtonElement>(null);
+  // What had focus inside the cards when the step changed, if anything.
+  const focusedAt = useRef<Element | null>(null);
 
   const go = (to: number) => {
     const next = Math.max(0, Math.min(LAST, to));
     if (next === step) return;
     changedAt.current = performance.now();
+    const active = document.activeElement;
+    focusedAt.current = active && walk.current?.contains(active) ? active : null;
     setStep(next);
   };
 
+  // A step change can take away the button that had focus: Next gives way to
+  // "Start a round" on the last card (and back again), and Back is hidden on
+  // the first. Focus would drop to the page, so it goes to the primary button.
   useLayoutEffect(() => {
-    if (step === LAST && followFocus.current) startBtn.current?.focus();
-    followFocus.current = false;
+    const was = focusedAt.current;
+    focusedAt.current = null;
+    if (was && (!was.isConnected || was.closest('[aria-hidden="true"]'))) {
+      primaryBtn.current?.focus();
+    }
   }, [step]);
 
   const onTouchStart = (e: React.TouchEvent) => {
@@ -96,6 +104,7 @@ export function Walkthrough({ onClose, onStart, onRules }: Props) {
   return (
     <Sheet title="How Trunk works" onClose={onClose}>
       <div
+        ref={walk}
         className="walk"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
@@ -137,20 +146,17 @@ export function Walkthrough({ onClose, onStart, onRules }: Props) {
           {step < LAST ? (
             <button
               key="next"
-              ref={nextBtn}
+              ref={primaryBtn}
               type="button"
               className="btn-primary"
-              onClick={() => {
-                followFocus.current = document.activeElement === nextBtn.current;
-                go(step + 1);
-              }}
+              onClick={() => go(step + 1)}
             >
               Next
             </button>
           ) : (
             <button
               key="start"
-              ref={startBtn}
+              ref={primaryBtn}
               type="button"
               className="btn-primary"
               onClick={() => {

@@ -113,6 +113,26 @@ describe('Walkthrough', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Start a round' }));
   });
 
+  it('moves focus to Next when Back is hidden on the first card', () => {
+    setup();
+    next();
+    const back = screen.getByRole('button', { name: 'Back' });
+    back.focus();
+    fireEvent.click(back);
+    expect(step()).toBe('1 of 3');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next' }));
+  });
+
+  it('moves focus to Next when a swipe back takes "Start a round" away', () => {
+    setup();
+    next();
+    next();
+    screen.getByRole('button', { name: 'Start a round' }).focus();
+    swipe(120, 0);
+    expect(step()).toBe('2 of 3');
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Next' }));
+  });
+
   it('links the video in a new tab on every card', () => {
     setup();
     for (let i = 0; i < 3; i++) {
