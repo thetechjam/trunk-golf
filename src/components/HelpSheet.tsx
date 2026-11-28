@@ -28,9 +28,9 @@ export function HelpSheet({ onBack }: Props) {
           four-ball — as the Rules of Handicapping recommend.
         </p>
         <p>
-          Type a <strong>stake</strong> on a game's tile (or in the Money row)
-          and Trunk keeps a running total through the round, then settles the
-          group up in the fewest payments. Stakes and handicaps can be changed
+          Type a <strong>stake</strong> on a game's tile and Trunk keeps a
+          running total through the round, then settles the group up in the
+          fewest payments. Stakes and handicaps can be changed
           mid-round.
         </p>
         <p>
@@ -55,10 +55,12 @@ export function HelpSheet({ onBack }: Props) {
         <h3>Trips</h3>
         <p>
           Playing several rounds over a long weekend? Put them on a trip and
-          settle the money once at the end, instead of after every round. In
-          New Round, open the <strong>Trip</strong> row and choose{' '}
-          <strong>+ New trip</strong> to name it. While the trip is going, the
-          next round you start is already on it.
+          settle the money once at the end, instead of after every round. Tap{' '}
+          <strong>Trip</strong> on Home (under Or start something else), or{' '}
+          <strong>Add to a trip</strong> at the bottom of New Round, and name
+          it. While the trip is going, the next round you start is already on
+          it — New Round says which trip, with <strong>Change</strong> beside
+          it.
         </p>
         <p>
           Each round still shows its own settlement. The trip screen — from the

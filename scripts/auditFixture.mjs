@@ -242,11 +242,19 @@ export async function walkScreens({ page, BASE, step, width, settings }) {
   /** The round card for a course, which is not the saved-course row of the same name. */
   const openRound = (course) =>
     page.locator('.round-card .round-main, .resume-card', { hasText: course }).first().click();
+  /** With a round in play Home folds Trip, Scramble and League behind
+      "Or start something else"; unfold it if it is there and closed. */
+  const openMore = async () => {
+    const toggle = page.getByRole('button', { name: 'Or start something else' });
+    if ((await toggle.count()) && (await toggle.getAttribute('aria-expanded')) === 'false') {
+      await toggle.click();
+    }
+  };
 
   await step(at('Home'), home);
 
   /* The state a returning user actually lands on, which the every-row-open
-     step below never measures: four collapsed rows, the recall chips beside
+     step below never measures: three collapsed rows, the recall chips beside
      "+ Add player", and nothing expanded. */
   await step(
     at('New Round (as opened)'),
@@ -263,7 +271,7 @@ export async function walkScreens({ page, BASE, step, width, settings }) {
       await home();
       await page.getByRole('button', { name: /Start New Round/i }).click();
       await page.waitForTimeout(400);
-      for (const row of ['Course', 'Games', 'Holes & pars', 'Money']) {
+      for (const row of ['Course', 'Games', 'Holes & pars']) {
         await page.getByText(new RegExp(`^${row}$`)).first().click();
       }
       await page.waitForTimeout(500);
@@ -274,6 +282,7 @@ export async function walkScreens({ page, BASE, step, width, settings }) {
     at('Golf League'),
     async () => {
       await home();
+      await openMore();
       await page.getByRole('button', { name: /Golf League/i }).click();
       await page.waitForTimeout(500);
     }
@@ -283,6 +292,7 @@ export async function walkScreens({ page, BASE, step, width, settings }) {
     at('Scramble setup (every row open)'),
     async () => {
       await home();
+      await openMore();
       await page.getByRole('button', { name: 'Scramble', exact: true }).click();
       await page.waitForTimeout(400);
       await page.getByRole('button', { name: '+ Add a team' }).click();
@@ -340,6 +350,7 @@ export async function walkScreens({ page, BASE, step, width, settings }) {
     at('Standings'),
     async () => {
       await home();
+      await openMore();
       await page.getByRole('button', { name: /Golf League/i }).click();
       await page.waitForTimeout(400);
       await page.getByRole('button', { name: /Season standings/i }).click();

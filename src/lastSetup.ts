@@ -6,8 +6,8 @@ import type { GameOptions, GameType, Round } from './types';
  *
  * A weekly group plays the same $5 Nassau with auto-press and $2 skins every
  * week, and was re-picking the games, retyping both stakes and turning
- * auto-press back on every time — with the Money row collapsed by default,
- * so a forgotten stake was a round played for nothing. The players were
+ * auto-press back on every time — with the stakes out of sight, so a
+ * forgotten stake was a round played for nothing. The players were
  * already remembered; this remembers the rest.
  *
  * Teams are not carried: they name player ids, and the next round's players

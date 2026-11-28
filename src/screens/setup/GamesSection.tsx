@@ -145,8 +145,7 @@ export function GamesSection({
               {/* The stake sits on the tile it belongs to, under the name,
                   so picking a game and pricing it are one place. A sibling
                   of the row, never inside the pick button, and above the
-                  rules so opening ⓘ does not move it. Same value and write
-                  as the Money row's field. */}
+                  rules so opening ⓘ does not move it. */}
               {games.includes(g.id) && (
                 <label className="game-stake">
                   <span className="dollar" aria-hidden="true">

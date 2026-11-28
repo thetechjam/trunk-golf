@@ -8,6 +8,11 @@ interface Props {
   trips: Trip[];
   value: RoundTrip | null;
   onChange: (trip: RoundTrip | null) => void;
+  /**
+   * Open on "+ New trip" with the name field up, for when there is nothing
+   * to choose between yet. Read on mount only.
+   */
+  startNaming?: boolean;
 }
 
 /** How many past trips to offer. Past that, it is not the trip you are on. */
@@ -20,12 +25,12 @@ const OFFERED = 3;
  * "no trip" and the one trip being played this week, and a select hides both
  * behind a tap. A new trip only needs a name; it exists once a round names it.
  */
-export function TripPicker({ trips, value, onChange }: Props) {
+export function TripPicker({ trips, value, onChange, startNaming = false }: Props) {
   const offered = trips.slice(0, OFFERED);
   const known = !value || offered.some((t) => t.id === value.id);
   // Typing a new trip's name: open when the current value is a trip not in
-  // the list, which only a new one can be.
-  const [naming, setNaming] = useState(!known);
+  // the list, which only a new one can be, or when asked to start there.
+  const [naming, setNaming] = useState(!known || startNaming);
   const [draft, setDraft] = useState(known ? '' : (value?.name ?? ''));
   // One id per new trip, kept while the name is edited so the round does not
   // get a fresh trip for every keystroke.
@@ -84,8 +89,8 @@ export function TripPicker({ trips, value, onChange }: Props) {
             placeholder="e.g. Myrtle ’27"
             autoCapitalize="words"
             maxLength={40}
-            // Opened by a tap on "+ New trip", so the keyboard is the next thing
-            // wanted.
+            // Opened by a tap on "+ New trip" (or "Add to a trip" with nothing
+            // to pick), so the keyboard is the next thing wanted.
             autoFocus
           />
         </label>

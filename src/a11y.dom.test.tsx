@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach, beforeEach } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { render, cleanup, fireEvent } from '@testing-library/react';
 import type { Round, SavedCourse } from './types';
 import { Home } from './screens/Home';
 import { Setup } from './screens/Setup';
@@ -114,6 +114,7 @@ describe('every control says what it is', () => {
         onNew={noop}
         onNewLeague={noop}
         onNewScramble={noop}
+        onNewTrip={noop}
         onResume={noop}
         onViewResults={noop}
         onStats={noop}
@@ -127,6 +128,8 @@ describe('every control says what it is', () => {
   it('on New Round, with every row open', () => {
     render(<Setup onCancel={noop} onStart={noop} />);
     openEveryRow();
+    // And the trip picker, behind its quiet line.
+    fireEvent.click(document.querySelector<HTMLElement>('.setup-trip-line')!);
     expect(unnamed()).toEqual([]);
     expect(vaguelyNamed()).toEqual([]);
   });

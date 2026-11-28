@@ -81,6 +81,15 @@ export const ScrambleIcon = ({ size = 18, className }: IconProps) => (
   </svg>
 );
 
+/** A suitcase — a trip: a body, its handle and two straps. */
+export const TripIcon = ({ size = 18, className }: IconProps) => (
+  <svg {...base(size)} className={className}>
+    <rect x="3" y="7" width="18" height="13" rx="2" />
+    <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+    <path d="M8 7v13M16 7v13" />
+  </svg>
+);
+
 /** Arrow rising out of a tray. */
 export const ShareIcon = ({ size = 18, className }: IconProps) => (
   <svg {...base(size)} className={className}>

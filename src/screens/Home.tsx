@@ -10,7 +10,7 @@ import { PlayAgainCard } from '../components/PlayAgainCard';
 import { playAgainRound } from '../playAgain';
 import { activeTrip } from '../trips';
 import { liveRound } from '../roundSummary';
-import { FlagIcon, TrunkMark, TrophyIcon, GearIcon, ChartIcon, ScrambleIcon } from '../icons';
+import { FlagIcon, TrunkMark, TrophyIcon, GearIcon, ChartIcon, ScrambleIcon, TripIcon } from '../icons';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Walkthrough } from '../components/Walkthrough';
 import { KeepRoundsPrompt, keepRoundsPromptDue } from '../components/KeepRoundsPrompt';
@@ -21,8 +21,8 @@ import { countsForStats } from '../stats';
 /**
  * How many rounds Home shows before handing over to the history.
  *
- * Home is a launcher: the two buttons at the top are what somebody opened the
- * app to press, and an unbounded archive underneath them pushes those further
+ * Home is a launcher: Start New Round and the formats under it are what
+ * somebody opened the app to press, and an unbounded archive underneath them pushes those further
  * from the thumb with every round played. Five covers the round you are
  * part-way through and the last few you might want to look at again; anything
  * older is a search, which is what the history screen is for.
@@ -54,6 +54,8 @@ interface Props {
   onNewLeague: () => void;
   /** Absent where there is nowhere to go, e.g. in tests that do not need it. */
   onNewScramble?: () => void;
+  /** Opens New Round ready to name a trip. Absent, Home offers no Trip row. */
+  onNewTrip?: () => void;
   onResume: (round: Round) => void;
   onViewResults: (round: Round) => void;
   onStats: () => void;
@@ -67,6 +69,7 @@ export function Home({
   onNew,
   onNewLeague,
   onNewScramble,
+  onNewTrip,
   onResume,
   onViewResults,
   onStats,
@@ -130,53 +133,22 @@ export function Home({
       {trip && onTrip && <TripCard trip={trip} onOpen={() => onTrip(trip.id)} />}
 
       {/* Mid-round, the Resume card is the thing to press; a second filled
-          button under it would be two primaries arguing. League night is the
-          weekly special case, so it rides alongside rather than taking a
-          second full-width slab of equal weight. Scramble is the same kind of
-          occasion — an event format, not the everyday round — so it takes the
-          same tile. */}
-      <div className={`home-actions${onNewScramble ? ' three' : ''}`}>
-        <button className={live ? 'btn-secondary big' : 'btn-primary big'} onClick={onNew}>
-          Start New Round
-        </button>
-        {/* The visible word is in the name, so voice control still finds it.
-            The line under it says what the format is and is the button's
-            description, not part of its name. */}
-        <button
-          className="btn-secondary big home-league"
-          onClick={onNewLeague}
-          aria-label="Golf League"
-          aria-describedby="home-league-sub"
-        >
-          <span className="home-action-main">
-            <TrophyIcon size={20} />
-            League
-          </span>
-          <span className="home-action-sub" id="home-league-sub">
-            A weekly <span className="home-action-keep">2-on-2</span> night
-          </span>
-        </button>
-        {onNewScramble && (
-          <button
-            className="btn-secondary big home-league"
-            onClick={onNewScramble}
-            aria-label="Scramble"
-            aria-describedby="home-scramble-sub"
-          >
-            <span className="home-action-main">
-              <ScrambleIcon size={20} />
-              Scramble
-            </span>
-            <span className="home-action-sub" id="home-scramble-sub">
-              Everyone hits, best shot
-            </span>
-          </button>
-        )}
-      </div>
+          button under it would be two primaries arguing, so Start New Round
+          steps down to secondary while a round is live. */}
+      <button className={live ? 'btn-secondary big' : 'btn-primary big'} onClick={onNew}>
+        Start New Round
+      </button>
 
-      {/* Part of the launcher, so directly under its tiles and above any
-          message about installing or backing up. */}
+      {/* Directly under Start New Round, above the list: it is the more
+          frequent tap, and "Or start something else" reads right after both. */}
       {again && onPlayAgain && <PlayAgainCard round={again} onPlay={() => onPlayAgain(again)} />}
+
+      <StartSomethingElse
+        live={!!live}
+        onNewTrip={onNewTrip}
+        onNewScramble={onNewScramble}
+        onNewLeague={onNewLeague}
+      />
 
       <InstallPrompt />
 
@@ -262,5 +234,114 @@ export function Home({
         />
       )}
     </div>
+  );
+}
+
+interface MoreProps {
+  live: boolean;
+  onNewTrip?: () => void;
+  onNewScramble?: () => void;
+  onNewLeague: () => void;
+}
+
+/**
+ * The occasions that are not the everyday round — a trip, a scramble, league
+ * night — as a short list under Start New Round, each with a line saying what
+ * it is.
+ *
+ * Mid-round the Resume card is the thing to press, so the list folds behind a
+ * single "Or start something else" disclosure (closed on each visit) rather
+ * than putting three more buttons beside it. With no live round there is no
+ * toggle and the rows always show.
+ *
+ * Each row's name is its visible word ("Golf League" keeps the League tile's
+ * old name, which contains it), so voice control finds it; the line under it
+ * is the description, not part of the name.
+ */
+function StartSomethingElse({ live, onNewTrip, onNewScramble, onNewLeague }: MoreProps) {
+  const [open, setOpen] = useState(false);
+  const shown = !live || open;
+  return (
+    <section className={`home-more${live ? ' folded' : ''}${open ? ' open' : ''}`} aria-labelledby="home-more-title">
+      <h2 className="home-more-title" id="home-more-title">
+        {live ? (
+          <button
+            className="home-more-toggle"
+            aria-expanded={open}
+            aria-controls="home-more-rows"
+            onClick={() => setOpen((o) => !o)}
+          >
+            <span>Or start something else</span>
+            <span className="home-more-toggle-chev" aria-hidden="true">
+              ›
+            </span>
+          </button>
+        ) : (
+          'Or start something else'
+        )}
+      </h2>
+      {shown && (
+        <div className="home-more-rows" id="home-more-rows">
+          {onNewTrip && (
+            <MoreRow
+              id="home-trip-sub"
+              label="Trip"
+              icon={<TripIcon size={20} />}
+              name="Trip"
+              sub="Several rounds this weekend. Keep score each day, settle the money once at the end."
+              onClick={onNewTrip}
+            />
+          )}
+          {onNewScramble && (
+            <MoreRow
+              id="home-scramble-sub"
+              label="Scramble"
+              icon={<ScrambleIcon size={20} />}
+              name="Scramble"
+              sub="Everyone hits, best shot"
+              onClick={onNewScramble}
+            />
+          )}
+          <MoreRow
+            id="home-golf-league-sub"
+            label="Golf League"
+            icon={<TrophyIcon size={20} />}
+            name="League"
+            sub={
+              <>
+                A weekly <span className="home-more-keep">2-on-2</span> night
+              </>
+            }
+            onClick={onNewLeague}
+          />
+        </div>
+      )}
+    </section>
+  );
+}
+
+interface RowProps {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  name: string;
+  sub: React.ReactNode;
+  onClick: () => void;
+}
+
+function MoreRow({ id, label, icon, name, sub, onClick }: RowProps) {
+  return (
+    <button className="home-more-row" onClick={onClick} aria-label={label} aria-describedby={id}>
+      <span className="home-more-icon">{icon}</span>
+      <span className="home-more-text">
+        <span className="home-more-name">{name}</span>
+        <span className="home-more-sub" id={id}>
+          {sub}
+        </span>
+      </span>
+      <span className="home-more-chev" aria-hidden="true">
+        ›
+      </span>
+    </button>
   );
 }

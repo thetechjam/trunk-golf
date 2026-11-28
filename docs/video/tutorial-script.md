@@ -93,7 +93,7 @@ allowance selector.*
 
 ## 06 · Money (1:56–2:08)
 
-*The Money row opens. A stake typed against each game.*
+*A stake typed on each game's tile.*
 
 > Money sets the stake per game. Five a skin, twenty on the Nassau. Leave it
 > blank and you're playing for nothing — and you can change it mid-round from

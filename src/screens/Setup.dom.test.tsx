@@ -451,8 +451,7 @@ describe('starting from last time', () => {
     weekly();
     render(<Setup onCancel={() => {}} onStart={() => {}} />);
     const summaries = [...document.querySelectorAll('.setup-row-summary')].map((el) => el.textContent);
-    expect(summaries).toContain('Nassau, Skins');
-    expect(summaries).toContain('$5 Nassau · $2 Skins');
+    expect(summaries).toContain('Nassau, Skins · $5 / $2');
   });
 
   it('starts the round with them, auto-press included', async () => {
@@ -471,7 +470,8 @@ describe('starting from last time', () => {
     render(<Setup onCancel={() => {}} onStart={() => {}} />);
     const summaries = [...document.querySelectorAll('.setup-row-summary')].map((el) => el.textContent);
     expect(summaries).toContain('Skins');
-    expect(summaries).toContain('No stakes');
+    // Nothing staked: the names alone, never "No stakes" on a closed row.
+    expect(summaries.some((s) => /No stakes/.test(s ?? ''))).toBe(false);
   });
 });
 
@@ -645,9 +645,9 @@ describe('the game cards', () => {
 /**
  * The stake on the tile it belongs to.
  *
- * Money used to live only in its own collapsed row, below the games, and a
- * first round defaulted to $0 without anything saying so. A picked game now
- * carries its stake under its name, writing the same value the Money row does.
+ * Money used to live in its own collapsed row, below the games, and a first
+ * round defaulted to $0 without anything saying so. A picked game now carries
+ * its stake under its name, and the closed Games row shows it after the names.
  */
 describe('stakes on the game tiles', () => {
   const twoNamed = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -657,9 +657,10 @@ describe('stakes on the game tiles', () => {
   };
   const tileStake = (label: string, unit: string) =>
     screen.queryByLabelText<HTMLInputElement>(`${label} stake, $ per ${unit}`);
+  /** The Games row's summary: the game names, then the stakes. */
   const moneySummary = () =>
     [...document.querySelectorAll<HTMLElement>('.setup-row-head')]
-      .find((el) => el.textContent?.includes('Money'))!
+      .find((el) => el.querySelector('.setup-row-label')?.textContent === 'Games')!
       .querySelector('.setup-row-summary')!.textContent;
   const prompt = () => document.querySelector('.stakes-prompt')?.textContent ?? null;
 
@@ -680,33 +681,16 @@ describe('stakes on the game tiles', () => {
     expect(tileStake('Skins', 'skin')!.closest('button')).toBeNull();
   });
 
-  it('writes the same stake the Money row does, and starts the round with it', async () => {
+  it('shows the stake on the Games row, and starts the round with it', async () => {
     const user = userEvent.setup();
     const started: Round[] = [];
     render(<Setup onCancel={() => {}} onStart={(r) => started.push(r)} />);
     await twoNamed(user);
     await openRow(user, 'Games');
     await user.type(tileStake('Skins', 'skin')!, '5');
-    expect(moneySummary()).toBe('$5 Skins');
+    expect(moneySummary()).toBe('Skins · $5');
     await user.click(screen.getByRole('button', { name: /Start Round/i }));
     expect(started[0].options.stakes.skins).toBe(5);
-  });
-
-  it('agrees with the Money row field both ways', async () => {
-    const user = userEvent.setup();
-    render(<Setup onCancel={() => {}} onStart={() => {}} />);
-    await openRow(user, 'Games');
-    await user.type(tileStake('Skins', 'skin')!, '5');
-    await user.tab();
-    await openRow(user, 'Money');
-    const money = screen.getByLabelText<HTMLInputElement>(/^Skins\s*\$\s*per skin$/);
-    expect(money.value).toBe('5');
-    expect(tileStake('Skins', 'skin')!.value).toBe('5');
-
-    await user.clear(money);
-    await user.type(money, '3');
-    await user.tab();
-    expect(tileStake('Skins', 'skin')!.value).toBe('3');
   });
 
   it('keeps a stake through deselecting and reselecting the game', async () => {
@@ -1468,7 +1452,6 @@ describe('every field says what it is', () => {
     render(<Setup onCancel={() => {}} onStart={() => {}} />);
     await openRow(user, 'Course');
     await openRow(user, 'Holes & pars');
-    await openRow(user, 'Money');
 
     const unnamed = [...document.querySelectorAll('input, select')].filter(
       (el) => !el.getAttribute('aria-label') && !el.closest('label')
@@ -1572,7 +1555,7 @@ describe('the players card shortcuts', () => {
 
   it('still opens with every row collapsed once a round has been played', () => {
     withRound();
-    for (const row of ['Course', 'Games', 'Holes & pars', 'Money']) expect(rowOpen(row)).toBe(false);
+    for (const row of ['Course', 'Games', 'Holes & pars']) expect(rowOpen(row)).toBe(false);
   });
 });
 

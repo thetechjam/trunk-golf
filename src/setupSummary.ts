@@ -7,7 +7,8 @@ import { gameMeta } from './games';
  * These carry real weight: a row showing "18 holes · par 72" tells a
  * first-time user the question is already answered, which is what makes
  * skipping it feel safe rather than negligent. Every function therefore
- * returns a meaningful string for the empty case — never ''.
+ * returns a meaningful string for the empty case — never '' — except
+ * `gamesStakes`, a tail whose absence is the signal.
  */
 
 export function courseSummary(course: string): string {
@@ -31,14 +32,28 @@ function money(n: number): string {
   return Number.isInteger(n) ? `$${n}` : `$${n.toFixed(2)}`;
 }
 
-export function stakesSummary(games: GameType[], stakes: Stakes): string {
-  // Driven by `games`, not by the keys of `stakes`: deselecting a game leaves
-  // its stake behind in options.stakes, and that money is not in play.
-  const staked = games
-    .filter((g) => (stakes?.[g] ?? 0) > 0)
-    .map((g) => `${money(stakes[g] as number)} ${gameMeta(g).label}`);
-
-  return staked.length === 0 ? 'No stakes' : staked.join(' · ');
+/**
+ * The money on the closed Games row, shown after the game names: '' when
+ * nothing is staked (no "No stakes" — the absence of a $ is the signal, and
+ * the line under the tiles says it in words). One to three games read
+ * positionally, `$5 / $2`, with `–` for an unstaked game; four or more read
+ * `$ on all 4` or `$ on 2 of 4`, since a row of amounts would not fit.
+ *
+ * Driven by `games`, not by the keys of `stakes`: deselecting a game leaves
+ * its stake behind in options.stakes, and that money is not in play. 0 reads
+ * as unstaked, since a cleared stake field stores 0.
+ */
+export function gamesStakes(games: GameType[], stakes: Stakes): string {
+  const amounts = games.map((g) => {
+    const n = stakes?.[g] ?? 0;
+    return n > 0 ? n : null;
+  });
+  const staked = amounts.filter((n) => n !== null).length;
+  if (staked === 0) return '';
+  if (games.length >= 4) {
+    return staked === games.length ? `$ on all ${games.length}` : `$ on ${staked} of ${games.length}`;
+  }
+  return amounts.map((n) => (n === null ? '–' : money(n))).join(' / ');
 }
 
 /**

@@ -187,8 +187,7 @@ describe('play again', () => {
     expect(screen.queryByRole('status')).toBeNull();
     expect(names()).toEqual(['Mike', 'Dave', 'Chris', 'Tom']);
     expect(summaryOf('Course')).toBe('Sunset Ridge');
-    expect(summaries()).toContain('Nassau, Skins');
-    expect(summaries()).toContain('$5 Nassau · $2 Skins');
+    expect(summaries()).toContain('Nassau, Skins · $5 / $2');
     expect(openRows()).toHaveLength(0);
   });
 

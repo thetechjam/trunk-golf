@@ -224,7 +224,7 @@ describe('the ways in', () => {
     const started: Round[] = [];
     store([round('a', { Al: 3, Bo: 5 })]);
     render(<Setup onCancel={() => {}} onStart={(r) => started.push(r)} />);
-    expect(screen.getByRole('button', { name: /Trip/ }).textContent).toContain("Myrtle '27");
+    expect(document.querySelector('.setup-trip-on')?.textContent).toContain("On the Myrtle '27 trip");
     await user.type(screen.getByPlaceholderText('Player 1'), 'Al');
     await user.type(screen.getByPlaceholderText('Player 2'), 'Bo');
     await user.click(screen.getByRole('button', { name: /Start Round/ }));
@@ -235,8 +235,8 @@ describe('the ways in', () => {
     const user = userEvent.setup();
     const started: Round[] = [];
     render(<Setup onCancel={() => {}} onStart={(r) => started.push(r)} />);
-    await user.click(screen.getByRole('button', { name: /Trip/ }));
-    await user.click(screen.getByRole('button', { name: '+ New trip' }));
+    // No trips yet, so "Add to a trip" goes straight to the name.
+    await user.click(screen.getByRole('button', { name: /Add to a trip/ }));
     await user.type(screen.getByLabelText('Trip name'), 'Pinehurst');
     await user.type(screen.getByPlaceholderText('Player 1'), 'Al');
     await user.type(screen.getByPlaceholderText('Player 2'), 'Bo');
