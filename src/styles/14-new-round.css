@@ -236,3 +236,23 @@
   background: transparent;
   color: var(--muted);
 }
+
+/* ---- Course nudge ---------------------------------------------------------
+   Handicaps are in play and no hole has a stroke index. A note, not a
+   warning: no box or fill, lined up with the row labels beneath it. */
+.course-nudge {
+  margin-bottom: 6px;
+}
+.course-nudge button {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 8px 14px;
+  text-align: left;
+  font-size: var(--fs-md);
+  color: var(--muted);
+}
+.course-nudge-act {
+  color: var(--green-ink);
+  font-weight: 600;
+}
