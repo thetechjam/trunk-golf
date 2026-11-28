@@ -482,8 +482,10 @@ const scenes = [
     title: 'Setting the stakes',
     seed: { rounds: [], courses },
     async run(page) {
+      // No Money row any more: on a first round the Games row is already open
+      // and the stake fields are on its tiles (no other field on that form is
+      // inputmode="decimal" — the Course row's Rating is in a closed row).
       await tap(page, page.getByRole('button', { name: /Start New Round/i }));
-      await tap(page, page.getByText(/^Money$/).first());
       const stakes = page.locator('.stakes-editor input, .setup input[inputmode="decimal"]');
       const n = await stakes.count();
       if (n) await fill(page, stakes.nth(0), '5');
