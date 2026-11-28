@@ -72,13 +72,25 @@ describe('the course nudge on New Round', () => {
     expect(rowHead('Holes & pars').getAttribute('aria-expanded')).toBe('true');
     // The stroke-index editor is opened for them.
     await waitFor(() => expect(screen.getByLabelText('Stroke index for hole 1')).toBeTruthy());
+    // Opening it seeds 1..N in hole order, which places the strokes no
+    // differently, so the note stays until an index is changed.
+    expect(nudge()?.textContent).toMatch(NO_SI);
+    const si1 = screen.getByLabelText('Stroke index for hole 1');
+    const si2 = screen.getByLabelText('Stroke index for hole 2');
+    await user.clear(si1);
+    await user.type(si1, '2');
+    await user.clear(si2);
+    await user.type(si2, '1');
+    await waitFor(() => expect(nudge()).toBeNull());
   });
 
   it('goes away when a saved course with stroke indexes is loaded', async () => {
     const saved: SavedCourse = {
       id: 's1',
       name: 'Home Muni',
-      holes: Array.from({ length: 9 }, (_, i) => ({ number: i + 1, par: 4, strokeIndex: i + 1 })),
+      // Not 1..9 in hole order: that places the strokes no differently from
+      // having no indexes at all, so the note would stay.
+      holes: Array.from({ length: 9 }, (_, i) => ({ number: i + 1, par: 4, strokeIndex: 9 - i })),
     };
     localStorage.setItem('press.courses.v1', JSON.stringify([saved]));
     const user = await setUp({ handicap: '12' });

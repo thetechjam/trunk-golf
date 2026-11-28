@@ -249,12 +249,17 @@ export function Setup({ onCancel, onStart }: Props) {
         (!canScoreNet(g) || netByGame[g] !== false)
     ) &&
     namedPlayers.some((p) => (p.handicap ?? 0) !== 0 || (rated && p.index != null));
+  // Indexes still exactly in hole order count as not set: opening the
+  // stroke-index editor seeds 1..N, which places the strokes no differently
+  // from having none, so the note stays until an index is actually changed.
   const showCourseNudge =
-    strokesPerHole && cs.holes.every((h) => typeof h.strokeIndex !== 'number');
+    strokesPerHole &&
+    cs.holes.every((h, i) => typeof h.strokeIndex !== 'number' || h.strokeIndex === i + 1);
   const fixCourse = () => {
     if (!cs.course.trim()) return openRow('course');
     openRow('holes');
-    // Opens the stroke-index editor; turning it on only seeds blanks.
+    // Opens the stroke-index editor. Turning it on seeds blanks in hole
+    // order, which the check above still treats as not set.
     if (!cs.advancedHoles) dispatch({ type: 'toggleAdvanced' });
   };
   const allowanceGames = games.filter(usesHandicap);
