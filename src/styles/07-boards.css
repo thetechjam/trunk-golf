@@ -340,7 +340,7 @@
 }
 .stake-input input {
   width: 64px;
-  min-height: 40px;
+  min-height: 44px;
   padding: 8px;
   text-align: right;
 }
