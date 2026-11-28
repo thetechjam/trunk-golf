@@ -33,13 +33,27 @@ describe('the trips section', () => {
 });
 
 describe('the stakes sentence', () => {
-  it('says a stake is typed on the game’s tile, with the Money row as the other place', () => {
+  it('says a stake is typed on the game’s tile, with no Money row', () => {
     const { container } = render(<HelpSheet onBack={() => {}} />);
     const para = [...container.querySelectorAll('p')].find((p) =>
       p.querySelector('strong')?.textContent === 'stake'
     );
     expect(para?.textContent?.replace(/\s+/g, ' ')).toMatch(
-      /^Type a stake on a game's tile \(or in the Money row\) and Trunk keeps a running total/
+      /^Type a stake on a game's tile and Trunk keeps a running total/
     );
+    expect(para?.closest('section')?.textContent).not.toMatch(/Money row/);
+  });
+});
+
+describe('the Trips section', () => {
+  it('points to Trip on Home and Add to a trip in New Round, not a Trip row', () => {
+    render(<HelpSheet onBack={() => {}} />);
+    const text = screen
+      .getByRole('heading', { name: 'Trips' })
+      .closest('section')
+      ?.textContent?.replace(/\s+/g, ' ');
+    expect(text).toMatch(/Add to a trip/);
+    expect(text).toMatch(/Tap Trip on Home/);
+    expect(text).not.toMatch(/Trip row/);
   });
 });

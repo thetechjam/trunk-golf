@@ -20,7 +20,7 @@ function Harness({ seen, initial }: { seen: number[]; initial?: number }) {
   );
 }
 
-/** Two fields bound to one stake, as a game tile and the Money row are. */
+/** Two fields bound to one stake, so a commit in one must show in the other. */
 function Pair() {
   const [stake, setStake] = useState<number | undefined>(5);
   return (
