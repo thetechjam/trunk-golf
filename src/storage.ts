@@ -39,6 +39,22 @@ export interface Settings {
   lastBackupAt: number | null;
   /** When "Not now" was last tapped on the backup nudge. Ms since epoch; null = never. */
   backupNudgeSnoozedAt: number | null;
+  /**
+   * "Got it" was tapped on the first-open Add-to-Home-Screen card (Safari
+   * only). Absent in older settings, which read as not dismissed.
+   */
+  installTipDismissed: boolean;
+  /**
+   * How many times in a row "Not now" has been tapped on a backup reminder.
+   * At two, a reminder also offers "Don't remind me". A backup, or turning
+   * reminders back on in Settings, sets it to 0. Absent reads as 0.
+   */
+  backupNudgeSnoozeCount: number;
+  /**
+   * The user asked not to be reminded about backups ("Don't remind me", or
+   * the Settings switch). The Settings "Last backup" line still shows.
+   */
+  backupRemindersOff: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -49,6 +65,9 @@ export const DEFAULT_SETTINGS: Settings = {
   firstFinishPromptDismissed: false,
   lastBackupAt: null,
   backupNudgeSnoozedAt: null,
+  installTipDismissed: false,
+  backupNudgeSnoozeCount: 0,
+  backupRemindersOff: false,
 };
 
 const THEMES: readonly string[] = ['system', 'light', 'dark'];
@@ -56,6 +75,9 @@ const isTheme = (v: unknown): v is Theme => typeof v === 'string' && THEMES.incl
 /** A stored timestamp, or null for anything that is not a plausible one. */
 const timestamp = (v: unknown): number | null =>
   typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+/** A stored count, or 0 for anything that is not a whole number ≥ 0. */
+const count = (v: unknown): number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : 0;
 
 export function getSettings(): Settings {
   try {
@@ -76,6 +98,15 @@ export function getSettings(): Settings {
           : DEFAULT_SETTINGS.firstFinishPromptDismissed,
       lastBackupAt: timestamp(p.lastBackupAt),
       backupNudgeSnoozedAt: timestamp(p.backupNudgeSnoozedAt),
+      installTipDismissed:
+        typeof p.installTipDismissed === 'boolean'
+          ? p.installTipDismissed
+          : DEFAULT_SETTINGS.installTipDismissed,
+      backupNudgeSnoozeCount: count(p.backupNudgeSnoozeCount),
+      backupRemindersOff:
+        typeof p.backupRemindersOff === 'boolean'
+          ? p.backupRemindersOff
+          : DEFAULT_SETTINGS.backupRemindersOff,
     };
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -114,6 +145,9 @@ export function saveSettings(patch: Partial<Settings>): Settings | null {
     firstFinishPromptDismissed: patch.firstFinishPromptDismissed ?? cur.firstFinishPromptDismissed,
     lastBackupAt: patch.lastBackupAt ?? cur.lastBackupAt,
     backupNudgeSnoozedAt: patch.backupNudgeSnoozedAt ?? cur.backupNudgeSnoozedAt,
+    installTipDismissed: patch.installTipDismissed ?? cur.installTipDismissed,
+    backupNudgeSnoozeCount: patch.backupNudgeSnoozeCount ?? cur.backupNudgeSnoozeCount,
+    backupRemindersOff: patch.backupRemindersOff ?? cur.backupRemindersOff,
   };
   return tryWrite(SETTINGS_KEY, JSON.stringify(next)) ? next : null;
 }
