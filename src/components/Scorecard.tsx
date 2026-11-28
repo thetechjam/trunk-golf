@@ -1,21 +1,26 @@
 import { Fragment, useState } from 'react';
 import type { Round } from '../types';
 import { buildScorecard, formatToPar } from '../scorecardModel';
-import { clampScore } from '../scoreEntry';
 import { LEAGUE_MAX_SCORE, pickedUp } from '../games/league';
 import { playerColor } from '../player';
 import { formatHandicap } from '../games/handicap';
 import { PlayerAvatar } from './PlayerAvatar';
+import { ScoreEditSheet } from './ScoreEditSheet';
 
 interface Props {
   round: Round;
   currentHole?: number;
   onJumpToHole?: (index: number) => void;
   onScore?: (holeNumber: number, playerId: string, value: number | null) => void;
+  /** League only: toggle a pick-up (X) on this hole for this player. */
+  onPickup?: (holeNumber: number, playerId: string) => void;
 }
 
-/** Full-round grid: holes across, players down. Tap a cell to type a score directly. */
-export function Scorecard({ round, currentHole, onJumpToHole, onScore }: Props) {
+/**
+ * Full-round grid: holes across, players down. With `onScore`, tapping a cell
+ * opens a sheet with the Hole tab's score chips to fix that one score.
+ */
+export function Scorecard({ round, currentHole, onJumpToHole, onScore, onPickup }: Props) {
   const model = buildScorecard(round);
   const [editing, setEditing] = useState<{ playerId: string; holeNumber: number } | null>(null);
 
@@ -48,17 +53,16 @@ export function Scorecard({ round, currentHole, onJumpToHole, onScore }: Props) 
   /** The subtotal column that follows hole-column `i`, if any. */
   const nineAfter = (i: number) => model.nines.find((n) => n.afterIndex === i);
 
-  // Clamped to the 1..15 range clampScore enforces below; empty clears the score.
-  const commit = (playerId: string, holeNumber: number, raw: string, current: number | null) => {
-    if (!onScore) return;
-    const value = clampScore(raw);
-    if (value === undefined) return;
-    // Tapping a cell to look at it and tapping away is not an entry. It was
-    // being committed anyway, and on a league card that turned a pick-up —
-    // stored as a 9 — into a real 9 that could halve the hole.
-    if (value === current) return;
-    onScore(holeNumber, playerId, value);
-  };
+  /**
+   * The cell being fixed, looked up fresh from the model each render. Opening
+   * one and closing it is not an entry: it used to be committed anyway, and on
+   * a league card that turned a pick-up — stored as a 9 — into a real 9 that
+   * could halve the hole. The sheet commits only on a tap that changes it.
+   */
+  const league = !!round.options.league;
+  const editRow = editing && model.rows.find((r) => r.playerId === editing.playerId);
+  const editCell = editRow && editRow.cells.find((c) => c.holeNumber === editing.holeNumber);
+  const editHole = editCell && model.holes.find((h) => h.number === editCell.holeNumber);
 
   /**
    * Turns a hole's column header into a control that jumps to it.
@@ -194,9 +198,7 @@ export function Scorecard({ round, currentHole, onJumpToHole, onScore }: Props) 
                       : cell.toPar > 0
                         ? ' over'
                         : ' even';
-                const x = !!round.options.league && pickedUp(round, cell.holeNumber, row.playerId);
-                const isEditing =
-                  editing?.playerId === row.playerId && editing?.holeNumber === cell.holeNumber;
+                const x = league && pickedUp(round, cell.holeNumber, row.playerId);
                 const nine = nineAfter(cellIndex);
                 const nineTotal =
                   nine == null
@@ -207,67 +209,49 @@ export function Scorecard({ round, currentHole, onJumpToHole, onScore }: Props) 
                   <td
                     className={`sc-cell${tone}${cell.holeNumber === currentHole ? ' current' : ''}`}
                   >
-                    {isEditing ? (
-                      <input
-                        className="sc-input"
-                        type="number"
-                        inputMode="numeric"
-                        min={1}
-                        max={round.options.league ? LEAGUE_MAX_SCORE : 15}
-                        autoFocus
-                        defaultValue={cell.score ?? ''}
-                        onBlur={(e) => {
-                          commit(row.playerId, cell.holeNumber, e.target.value, cell.score);
-                          setEditing(null);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') e.currentTarget.blur();
-                          if (e.key === 'Escape') setEditing(null);
-                        }}
-                      />
-                    ) : (
-                      <button
-                        className="sc-cell-btn"
-                        onClick={() =>
-                          onScore &&
-                          setEditing({ playerId: row.playerId, holeNumber: cell.holeNumber })
-                        }
-                        aria-label={`${row.name}, hole ${cell.holeNumber}${
-                          x ? ', picked up' : cell.score != null ? `, ${cell.score}` : ', no score'
-                        }${
-                          cell.dots > 0
-                            ? `, ${cell.dots} handicap stroke${cell.dots === 1 ? '' : 's'}`
-                            : cell.dots < 0
-                              ? `, gives back ${-cell.dots} stroke${cell.dots === -1 ? '' : 's'}`
-                              : ''
-                        }${
-                          cell.chips.length > 0
-                            ? `, gets a stroke in ${cell.chips.join(', ')}`
+                    {/* Always a button, even while its sheet is open, so the
+                        dialog has something to hand focus back to. */}
+                    <button
+                      className="sc-cell-btn"
+                      onClick={() =>
+                        onScore &&
+                        setEditing({ playerId: row.playerId, holeNumber: cell.holeNumber })
+                      }
+                      aria-label={`${row.name}, hole ${cell.holeNumber}${
+                        x ? ', picked up' : cell.score != null ? `, ${cell.score}` : ', no score'
+                      }${
+                        cell.dots > 0
+                          ? `, ${cell.dots} handicap stroke${cell.dots === 1 ? '' : 's'}`
+                          : cell.dots < 0
+                            ? `, gives back ${-cell.dots} stroke${cell.dots === -1 ? '' : 's'}`
                             : ''
-                        }`}
-                      >
-                        {x ? (
-                          <span className="sc-x">X</span>
-                        ) : (
-                          cell.score != null && <span className={cell.markClass}>{cell.score}</span>
-                        )}
-                        {/* A plus player's stroke given back is a hollow dot. */}
-                        {cell.dots !== 0 && (
-                          <span className="sc-dots" aria-hidden="true">
-                            {(cell.dots > 0 ? '•' : '◦').repeat(Math.abs(cell.dots))}
-                          </span>
-                        )}
-                        {cell.chips.length > 0 && (
-                          <span className="sc-chips" aria-hidden="true">
-                            {cell.chips.map((k) => (
-                              <span key={k} className="sc-chip">
-                                {k}
-                              </span>
-                            ))}
-                          </span>
-                        )}
-                      </button>
-                    )}
+                      }${
+                        cell.chips.length > 0
+                          ? `, gets a stroke in ${cell.chips.join(', ')}`
+                          : ''
+                      }`}
+                    >
+                      {x ? (
+                        <span className="sc-x">X</span>
+                      ) : (
+                        cell.score != null && <span className={cell.markClass}>{cell.score}</span>
+                      )}
+                      {/* A plus player's stroke given back is a hollow dot. */}
+                      {cell.dots !== 0 && (
+                        <span className="sc-dots" aria-hidden="true">
+                          {(cell.dots > 0 ? '•' : '◦').repeat(Math.abs(cell.dots))}
+                        </span>
+                      )}
+                      {cell.chips.length > 0 && (
+                        <span className="sc-chips" aria-hidden="true">
+                          {cell.chips.map((k) => (
+                            <span key={k} className="sc-chip">
+                              {k}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </button>
                   </td>
                   {nine && (
                     <td className="sc-nine">{nineTotal ?? ''}</td>
@@ -316,6 +300,8 @@ export function Scorecard({ round, currentHole, onJumpToHole, onScore }: Props) 
         </tbody>
       </table>
     </div>
+    {/* Nothing on the grid says its cells can be tapped. */}
+    {onScore && <p className="sc-hint">Tap a score to edit</p>}
     {model.junk.length > 0 && (
       <section className="sc-junk">
         <h2>Junk</h2>
@@ -354,6 +340,23 @@ export function Scorecard({ round, currentHole, onJumpToHole, onScore }: Props) 
         </li>
       )}
     </ul>
+    {onScore && editRow && editCell && editHole && (
+      <ScoreEditSheet
+        name={editRow.name}
+        holeNumber={editCell.holeNumber}
+        par={editHole.par}
+        score={editCell.score}
+        pickedUp={league && pickedUp(round, editCell.holeNumber, editRow.playerId)}
+        max={league ? LEAGUE_MAX_SCORE : undefined}
+        onScore={(v) => onScore(editCell.holeNumber, editRow.playerId, v)}
+        onPickup={
+          league && onPickup
+            ? () => onPickup(editCell.holeNumber, editRow.playerId)
+            : undefined
+        }
+        onClose={() => setEditing(null)}
+      />
+    )}
     </>
   );
 }

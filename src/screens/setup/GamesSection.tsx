@@ -6,6 +6,9 @@ import { canScoreNet } from '../../games/scoring';
 import { MATCH_ALLOWANCE } from '../../games/handicap';
 import { TeamPicker, type Assign } from '../../components/TeamPicker';
 import { wolfMultiplier, MAX_WOLF_MULTIPLIER } from '../../numberInput';
+import { StakeInput } from '../../components/StakeInput';
+import { STAKE_UNIT } from '../../games/settlement';
+import { handicapSummary, stakesPrompt } from '../../setupSummary';
 
 /** How one side-based game's teams are being picked: 1v1 sides or 2v2 assignments. */
 export interface SidePick {
@@ -38,7 +41,11 @@ interface Props {
   onOptions: (next: GameOptions) => void;
 }
 
-/** The body of New Round's Games row: the picks, the scoring, the teams, the options. */
+/**
+ * The body of New Round's Games row: the picks (each selected one carrying its
+ * stake), a nudge while a selected game has none, the folded-away handicap
+ * options, the teams, the options.
+ */
 export function GamesSection({
   games,
   onToggleGame,
@@ -65,6 +72,37 @@ export function GamesSection({
   const showNassau = games.includes('nassau');
   const showMatchPlay = games.includes('matchPlay');
   const showVegas = games.includes('vegas');
+  // Folded away by default: the defaults are right for most groups, and five
+  // lines of handicap prose sat between the tiles and the teams. Component
+  // state only, so it closes again whenever the Games row does.
+  const [hcpOpen, setHcpOpen] = useState(false);
+
+  // One pass over the handicap games, shared by the rows and their summary so
+  // the closed head can never disagree with what opening it shows.
+  const hcpRows = allowanceGames.map((g) => {
+    const canNet = canScoreNet(g);
+    const net = canNet ? (netByGame[g] ?? true) : false;
+    // An allowance cuts handicap strokes, so it only means
+    // anything where handicap strokes are being used: a game set
+    // to gross has none to cut. Quota has no gross/net choice at
+    // all and always spends the handicap, so it always asks.
+    const showAllowance = canNet ? net : true;
+    // What the match is played off when nothing is chosen: the
+    // handbook's 90% for a four-ball, 100% otherwise — the same
+    // fallback `matchAllowanceFor` uses, so the row tells the truth.
+    const fourBall =
+      (g === 'matchPlay' && match.mode === '2v2') || (g === 'nassau' && nassau.mode === '2v2');
+    const fallback =
+      g === 'matchPlay' || g === 'nassau'
+        ? fourBall
+          ? MATCH_ALLOWANCE.fourBall
+          : MATCH_ALLOWANCE.singles
+        : 100;
+    const allowance = allowanceByGame[g] ?? fallback;
+    return { game: g, canNet, net, showAllowance, fallback, allowance };
+  });
+  const hcpSummary = handicapSummary(hcpRows);
+  const prompt = stakesPrompt(games, options.stakes);
 
   return (
     <>
@@ -104,6 +142,26 @@ export function GamesSection({
                   ⓘ
                 </button>
               </div>
+              {/* The stake sits on the tile it belongs to, under the name,
+                  so picking a game and pricing it are one place. A sibling
+                  of the row, never inside the pick button, and above the
+                  rules so opening ⓘ does not move it. Same value and write
+                  as the Money row's field. */}
+              {games.includes(g.id) && (
+                <label className="game-stake">
+                  <span className="dollar" aria-hidden="true">
+                    $
+                  </span>
+                  <StakeInput
+                    value={options.stakes[g.id]}
+                    onCommit={(v) =>
+                      onOptions({ ...options, stakes: { ...options.stakes, [g.id]: v } })
+                    }
+                    aria-label={`${g.label} stake, $ per ${STAKE_UNIT[g.id]}`}
+                  />
+                  <span className="per">per {STAKE_UNIT[g.id]}</span>
+                </label>
+              )}
               {/* The blurb lives behind the ⓘ with the rules: nine cards
                   each carrying a sentence made this row the longest part
                   of setup, and the name is what a regular picks by. */}
@@ -115,73 +173,74 @@ export function GamesSection({
             </div>
           ))}
         </div>
+        {/* Gentle, not an error: a round at $0 starts exactly as before.
+            No role — a live region would re-announce on every tile tap. */}
+        {prompt && <p className="stakes-prompt">{prompt}</p>}
       </section>
 
       {showScoring && (
-        <section className="card">
-          <h2>Scoring</h2>
-          <p className="hint-inline">
-            Handicaps apply at full allowance by default. Match Play and Nassau play off the
-            low handicap — the lowest plays scratch and the rest take the difference, 90% of
-            it in a four-ball. Set a game to gross to play it off the card, or change an
-            allowance the way your group plays — 85% for four-ball stroke play, 95% for
-            Stableford.
-          </p>
-          {allowanceGames.map((g) => {
-            const canNet = canScoreNet(g);
-            const net = canNet ? (netByGame[g] ?? true) : false;
-            // An allowance cuts handicap strokes, so it only means
-            // anything where handicap strokes are being used: a game set
-            // to gross has none to cut. Quota has no gross/net choice at
-            // all and always spends the handicap, so it always asks.
-            const showAllowance = canNet ? net : true;
-            // What the match is played off when nothing is chosen: the
-            // handbook's 90% for a four-ball, 100% otherwise — the same
-            // fallback `matchAllowanceFor` uses, so the row tells the truth.
-            const fourBall =
-              (g === 'matchPlay' && match.mode === '2v2') ||
-              (g === 'nassau' && nassau.mode === '2v2');
-            const fallback =
-              g === 'matchPlay' || g === 'nassau'
-                ? fourBall
-                  ? MATCH_ALLOWANCE.fourBall
-                  : MATCH_ALLOWANCE.singles
-                : 100;
-            return (
-              <div key={g} className="score-mode-row">
-                <span className="score-mode-name">{gameMeta(g).label}</span>
-                {canNet && (
-                  <div className="seg small">
-                    {([false, true] as const).map((v) => (
-                      <button
-                        key={String(v)}
-                        type="button"
-                        className={`seg-btn${net === v ? ' active' : ''}`}
-                        aria-pressed={net === v}
-                        onClick={() => onNetByGame(g, v)}
-                      >
-                        {v ? 'Net' : 'Gross'}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {showAllowance && (
-                  <select
-                    className="allowance-select"
-                    value={allowanceByGame[g] ?? fallback}
-                    onChange={(e) => onAllowance(g, Number(e.target.value))}
-                    aria-label={`Handicap allowance for ${gameMeta(g).label}`}
-                  >
-                    {[100, 95, 90, 85, 75, 50].map((pct) => (
-                      <option key={pct} value={pct}>
-                        {pct}%
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            );
-          })}
+        <section className={`card hcp-options${hcpOpen ? ' open' : ''}`}>
+          {/* Its own head, not .setup-row-head: that chevron rotates under
+              any open .setup-row, and this sits inside the open Games row. */}
+          <button
+            type="button"
+            className="hcp-options-head"
+            aria-expanded={hcpOpen}
+            onClick={() => setHcpOpen((o) => !o)}
+          >
+            <span className="hcp-options-text">
+              <span className="hcp-options-label">Handicap options</span>
+              <span className="hcp-options-summary">{hcpSummary}</span>
+            </span>
+            <span className="hcp-options-chevron" aria-hidden="true">
+              ›
+            </span>
+          </button>
+          {hcpOpen && (
+            <div id="hcp-options-body" className="hcp-options-body">
+              <p className="hint-inline">
+                Handicaps apply at full allowance by default. Match Play and Nassau play off the
+                low handicap — the lowest plays scratch and the rest take the difference, 90% of
+                it in a four-ball. Set a game to gross to play it off the card, or change an
+                allowance the way your group plays — 85% for four-ball stroke play, 95% for
+                Stableford.
+              </p>
+              {hcpRows.map(({ game: g, canNet, net, showAllowance, allowance }) => (
+                <div key={g} className="score-mode-row">
+                  <span className="score-mode-name">{gameMeta(g).label}</span>
+                  {canNet && (
+                    <div className="seg small">
+                      {([false, true] as const).map((v) => (
+                        <button
+                          key={String(v)}
+                          type="button"
+                          className={`seg-btn${net === v ? ' active' : ''}`}
+                          aria-pressed={net === v}
+                          onClick={() => onNetByGame(g, v)}
+                        >
+                          {v ? 'Net' : 'Gross'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showAllowance && (
+                    <select
+                      className="allowance-select"
+                      value={allowance}
+                      onChange={(e) => onAllowance(g, Number(e.target.value))}
+                      aria-label={`Handicap allowance for ${gameMeta(g).label}`}
+                    >
+                      {[100, 95, 90, 85, 75, 50].map((pct) => (
+                        <option key={pct} value={pct}>
+                          {pct}%
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
