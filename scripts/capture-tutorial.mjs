@@ -483,10 +483,10 @@ const scenes = [
     seed: { rounds: [], courses },
     async run(page) {
       // No Money row any more: on a first round the Games row is already open
-      // and the stake fields are on its tiles (no other field on that form is
-      // inputmode="decimal" — the Course row's Rating is in a closed row).
+      // and the stake fields are on its tiles. Scoped to the tile fields, so
+      // the Course row's Rating (also inputmode="decimal") can never match.
       await tap(page, page.getByRole('button', { name: /Start New Round/i }));
-      const stakes = page.locator('.stakes-editor input, .setup input[inputmode="decimal"]');
+      const stakes = page.locator('.setup .game-stake input');
       const n = await stakes.count();
       if (n) await fill(page, stakes.nth(0), '5');
       if (n > 1) await fill(page, stakes.nth(1), '20');
