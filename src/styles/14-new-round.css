@@ -1,7 +1,7 @@
 /* ---- New Round collapsible rows -------------------------------------------
    Each row names its own current value so the screen reads as settled facts
-   rather than unanswered questions. Grouped into one card so four rows read
-   as a short list, not four separate panels. */
+   rather than unanswered questions. Grouped into one card so the rows read
+   as a short list, not separate panels. */
 .setup-rows {
   background: var(--card);
   border: 1px solid var(--line);
@@ -36,6 +36,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* A summary with a tail (Games: names, then the stakes) is still one line;
+   when it is tight the game names truncate and the money stays whole. */
+.setup-row-summary.has-tail {
+  display: flex;
+  justify-content: flex-end;
+}
+.setup-row-summary-main {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.setup-row-tail {
+  flex: none;
+  white-space: pre;
 }
 /* A disclosure chevron rotating 0 -> 90deg is on-screen movement, not press
    feedback: it travels with the panel opening beneath it rather than
@@ -90,6 +105,49 @@
   .setup-row-chevron {
     transition: none;
   }
+}
+
+/* ---- New Round trip block --------------------------------------------------
+   Quiet by default: most rounds are not on a trip, so it is one line after
+   the rows rather than a row of its own. Card surface and tokens only, so
+   dark and Glare follow. */
+.setup-trip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: var(--fs-md);
+  text-align: left;
+}
+.setup-trip strong {
+  color: var(--green-ink);
+  font-weight: 700;
+}
+.setup-trip-line {
+  display: block;
+  cursor: pointer;
+}
+.setup-trip-on {
+  justify-content: space-between;
+  padding-right: 8px;
+}
+.setup-trip-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.setup-trip-name strong {
+  color: var(--ink);
+}
+.setup-trip-on .btn-ghost {
+  flex: none;
+  min-width: 48px;
+  min-height: 48px;
 }
 
 /* ---- Player recall chips -------------------------------------------------- */

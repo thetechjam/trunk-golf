@@ -3,6 +3,12 @@ interface Props {
   label: string;
   /** Current value, e.g. "18 holes · par 72". Never empty — see setupSummary.ts. */
   summary: string;
+  /**
+   * A second part of the summary that must stay whole, e.g. the stakes after
+   * the game names ("Nassau, Skins · $5 / $2"). When the line is tight the
+   * summary truncates and the tail does not. Absent, the markup is unchanged.
+   */
+  tail?: string;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
@@ -16,7 +22,7 @@ interface Props {
  * is deliberately not an accordion. Opening Games must not silently close
  * Course; someone comparing two rows should not have to fight the screen.
  */
-export function SetupRow({ label, summary, open, onToggle, children }: Props) {
+export function SetupRow({ label, summary, tail, open, onToggle, children }: Props) {
   return (
     <div className={`setup-row${open ? ' open' : ''}`}>
       <button
@@ -25,7 +31,14 @@ export function SetupRow({ label, summary, open, onToggle, children }: Props) {
         aria-expanded={open}
       >
         <span className="setup-row-label">{label}</span>
-        <span className="setup-row-summary">{summary}</span>
+        {tail ? (
+          <span className="setup-row-summary has-tail">
+            <span className="setup-row-summary-main">{summary}</span>
+            <span className="setup-row-tail"> · {tail}</span>
+          </span>
+        ) : (
+          <span className="setup-row-summary">{summary}</span>
+        )}
         <span className="setup-row-chevron" aria-hidden="true">
           ›
         </span>

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, Suspense } from 'react';
+import { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import { todayIso } from '../roundDate';
 import type { Round, Player, GameType, TeamSetup, RoundTrip } from '../types';
 import { DEFAULT_OPTIONS } from '../types';
@@ -11,11 +11,10 @@ import { notSavedReason } from '../notSaved';
 import { SetupRow } from '../components/SetupRow';
 import { TripPicker } from '../components/TripPicker';
 import { activeTrip, listTrips } from '../trips';
-import { courseSummary, holesSummary, gamesSummary, stakesSummary } from '../setupSummary';
+import { courseSummary, holesSummary, gamesSummary, gamesStakes } from '../setupSummary';
 import { buildRoster, lastCrew, isFirstEverRound, type RosterEntry, placePlayer } from '../roster';
 import { SendRound } from '../lazyScreens';
 import { GearIcon } from '../icons';
-import { StakesEditor } from '../components/StakesEditor';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { nameKey, nearMatches, resolveName, peopleOn } from '../people';
 import { lastSetup } from '../lastSetup';
@@ -40,18 +39,24 @@ interface Props {
    * Round. Read on mount only.
    */
   again?: Round | null;
+  /**
+   * Opened from Home's Trip row: the trip block shows open, at the top, on
+   * the trip being played or, with none, on a new trip's name. Read on mount
+   * only.
+   */
+  startTrip?: boolean;
 }
 
 /**
  * New Round.
  *
- * The screen is a Players card and five collapsible rows. The course and the
+ * The screen is a Players card, three collapsible rows and a quiet trip line. The course and the
  * holes live in one reducer (`setup/courseState.ts`), because they move
  * together; the players, the games and their options are plain state here,
  * because they do not. Each row's body is its own component under `setup/`,
  * so this file is the state, the rules for starting a round, and the layout.
  */
-export function Setup({ onCancel, onStart, again = null }: Props) {
+export function Setup({ onCancel, onStart, again = null, startTrip = false }: Props) {
   // What the group played last time: the games, the stakes and the options
   // start where they were left, the way the players already did, and so does
   // the course when last time had one. Playing a particular round again takes
@@ -137,6 +142,21 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
     const t = activeTrip(savedRounds);
     return t ? { id: t.id, name: t.name } : null;
   });
+  // The trip block: a single quiet line (or "On the … trip") until asked for,
+  // then the picker for the rest of the visit, so the chips show the choice.
+  const [tripOpen, setTripOpen] = useState(startTrip);
+  const tripRef = useRef<HTMLElement>(null);
+  // Revealed by a tap, the line or "Change" that held focus is gone: put
+  // focus on the chosen chip, unless the name field already took it. Not on
+  // mount — opened from Home, App hands focus to the name field or the h1.
+  const tripWasOpen = useRef(tripOpen);
+  useEffect(() => {
+    if (!tripOpen || tripWasOpen.current) return;
+    tripWasOpen.current = true;
+    const block = tripRef.current;
+    if (!block || document.activeElement?.closest('.trip-name')) return;
+    block.querySelector<HTMLElement>('.trip-chip[aria-pressed="true"]')?.focus();
+  }, [tripOpen]);
 
   // Which rows are expanded. Independent flags, not an accordion.
   // Games opens on a first-ever round: collapsing it is the one part of this
@@ -447,6 +467,37 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
     onStart(round);
   };
 
+  // The trip block. It sits after the rows, out of the way, except when
+  // opened from Home's Trip row: then it leads, so the focused field is on
+  // screen and the order reads "name the trip, then who is playing".
+  // `startNaming` when there is nothing to choose between — no trip going and
+  // none to offer, or Home's Trip row with none going — so a first tap goes
+  // straight to the name field.
+  const tripBlock = tripOpen ? (
+    <section className="card setup-trip-open" ref={tripRef}>
+      <h2>Trip</h2>
+      <TripPicker
+        trips={trips}
+        value={trip}
+        onChange={setTrip}
+        startNaming={!trip && (trips.length === 0 || startTrip)}
+      />
+    </section>
+  ) : trip ? (
+    <div className="setup-trip setup-trip-on">
+      <span className="setup-trip-name">
+        On the <strong>{trip.name}</strong> trip
+      </span>
+      <button className="btn-ghost" aria-label="Change trip" onClick={() => setTripOpen(true)}>
+        Change
+      </button>
+    </div>
+  ) : (
+    <button className="setup-trip setup-trip-line" onClick={() => setTripOpen(true)}>
+      Playing a few rounds this weekend? <strong>Add to a trip</strong>
+    </button>
+  );
+
   return (
     <div className="screen setup">
       <header className="bar">
@@ -468,6 +519,8 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
             : 'Same players and games as last time. Change anything, then start.'}
         </p>
       )}
+
+      {startTrip && tripBlock}
 
       <PlayersSection
         players={players}
@@ -523,6 +576,7 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
         <SetupRow
           label="Games"
           summary={gamesSummary(games)}
+          tail={gamesStakes(games, options.stakes) || undefined}
           open={!!openRows.games}
           onToggle={() => toggleRow('games')}
         >
@@ -562,35 +616,9 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
             indexWaiting={indexWaiting}
           />
         </SetupRow>
-
-        <SetupRow
-          label="Money"
-          summary={stakesSummary(games, options.stakes)}
-          open={!!openRows.money}
-          onToggle={() => toggleRow('money')}
-        >
-          <section className="card">
-            <StakesEditor
-              games={games}
-              stakes={options.stakes}
-              onChange={(stakes) => setOptions({ ...options, stakes })}
-            />
-            <p className="hint">
-              Optional — leave blank to play for nothing. You can add or change stakes later from the
-              Board.
-            </p>
-          </section>
-        </SetupRow>
-
-        <SetupRow
-          label="Trip"
-          summary={trip?.name ?? 'None'}
-          open={!!openRows.trip}
-          onToggle={() => toggleRow('trip')}
-        >
-          <TripPicker trips={trips} value={trip} onChange={setTrip} />
-        </SetupRow>
       </div>
+
+      {!startTrip && tripBlock}
 
       <div className="screen-foot">
         {/* Inside the pinned bar rather than above it, and an alert: this is

@@ -3,13 +3,14 @@ import {
   courseSummary,
   holesSummary,
   gamesSummary,
-  stakesSummary,
+  gamesStakes,
   leagueCourseSummary,
   handicapSummary,
   stakesPrompt,
   type HandicapRow,
 } from './setupSummary';
 import { holes, holes18 } from './games/testFixtures';
+import type { GameType } from './types';
 
 describe('courseSummary', () => {
   it('names the course when set', () => {
@@ -54,34 +55,42 @@ describe('gamesSummary', () => {
   });
 });
 
-describe('stakesSummary', () => {
-  it('says No stakes when nothing is staked', () => {
-    expect(stakesSummary(['skins'], {})).toBe('No stakes');
+describe('gamesStakes', () => {
+  it('is empty when nothing is staked', () => {
+    expect(gamesStakes(['skins'], {})).toBe('');
+    expect(gamesStakes([], { skins: 5 })).toBe('');
   });
 
   it('treats a zero stake as unstaked', () => {
     // StakesEditor writes 0 when a field is cleared, so 0 and absent must read
     // the same or a cleared field would keep claiming money is on the line.
-    expect(stakesSummary(['skins'], { skins: 0 })).toBe('No stakes');
+    expect(gamesStakes(['skins'], { skins: 0 })).toBe('');
   });
 
-  it('lists staked games with their amounts', () => {
-    expect(stakesSummary(['skins', 'wolf'], { skins: 5, wolf: 2 })).toBe(
-      '$5 Skins · $2 Wolf'
-    );
+  it('lists amounts in game order', () => {
+    expect(gamesStakes(['nassau', 'skins'], { nassau: 5, skins: 2 })).toBe('$5 / $2');
   });
 
-  it('lists only staked games, skipping the rest', () => {
-    expect(stakesSummary(['skins', 'wolf'], { skins: 5 })).toBe('$5 Skins');
+  it('marks an unstaked game with a dash', () => {
+    expect(gamesStakes(['nassau', 'skins'], { nassau: 5 })).toBe('$5 / –');
+    expect(gamesStakes(['nassau', 'skins'], { skins: 2 })).toBe('– / $2');
   });
 
   it('ignores stakes for games no longer selected', () => {
     // Deselecting a game leaves its stake behind in options.stakes.
-    expect(stakesSummary(['skins'], { skins: 5, wolf: 99 })).toBe('$5 Skins');
+    expect(gamesStakes(['skins'], { skins: 5, wolf: 99 })).toBe('$5');
+    expect(gamesStakes(['skins'], { wolf: 99 })).toBe('');
   });
 
   it('keeps a decimal stake readable', () => {
-    expect(stakesSummary(['skins'], { skins: 2.5 })).toBe('$2.50 Skins');
+    expect(gamesStakes(['skins'], { skins: 2.5 })).toBe('$2.50');
+  });
+
+  it('counts rather than lists four or more games', () => {
+    const four: GameType[] = ['nassau', 'skins', 'wolf', 'matchPlay'];
+    expect(gamesStakes(four, { nassau: 5, skins: 2, wolf: 1, matchPlay: 10 })).toBe('$ on all 4');
+    expect(gamesStakes(four, { nassau: 5, wolf: 1 })).toBe('$ on 2 of 4');
+    expect(gamesStakes(four, {})).toBe('');
   });
 });
 
