@@ -16,7 +16,7 @@ import { playAgainLines } from '../playAgain';
 export function PlayAgainCard({ round, onPlay }: { round: Round; onPlay: () => void }) {
   const { who, games } = playAgainLines(round);
   return (
-    <button className="play-again" onClick={onPlay}>
+    <button type="button" className="play-again" onClick={onPlay}>
       <span className="play-again-text">
         <span className="play-again-eyebrow">Play again</span>{' '}
         <span className="play-again-who">{who}</span>{' '}

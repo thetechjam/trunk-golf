@@ -2,9 +2,13 @@ import type { Player, Round, TeamSetup } from '../../types';
 import type { Assign } from '../../components/TeamPicker';
 import type { SidePick } from './GamesSection';
 import { uid } from '../../storage';
+import { isScramble } from '../../games/scramble';
 
-/** Rounds New Round learns from: not a league night, not a scramble. */
-const regular = (r: Round) => !r.options.league && !r.options.scramble;
+/**
+ * Rounds New Round learns from: not a league night, not a scramble. The same
+ * test as `season.ts` and `playAgain.ts` make.
+ */
+const regular = (r: Round) => !r.options.league && !isScramble(r);
 
 /**
  * The round whose course New Round opens on: the most recent regular round,
