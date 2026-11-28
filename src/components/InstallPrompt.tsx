@@ -3,6 +3,9 @@ import { DownloadIcon } from '../icons';
 import { requestPersistentStorage } from '../persistence';
 import { isIOS, storageRisk } from '../platform';
 import { getSettings, saveSettings } from '../storage';
+import { currentBackupStatus } from '../backupStatus';
+import { homeScreenCardHeld } from '../homeScreenHold';
+import { focusScreenHeading } from '../focusHeading';
 import { AddToHomeSteps } from './AddToHomeSteps';
 
 interface BeforeInstallPromptEvent extends Event {
@@ -56,16 +59,18 @@ export function InstallPrompt() {
  * Home's first-open card in a Safari tab, where a site's saved rounds can be
  * cleared after a week away and the home screen app is what keeps them.
  * Due until "Got it" is tapped once; Home decides whether it is the one
- * message on screen.
+ * message on screen. Held back for the rest of the session once the backup
+ * card on Results has been answered (see `homeScreenHold.ts`).
  */
 export function homeScreenCardDue(): boolean {
-  return storageRisk() === 'evicting' && !getSettings().installTipDismissed;
+  return storageRisk() === 'evicting' && !getSettings().installTipDismissed && !homeScreenCardHeld();
 }
 
 /**
- * The card itself: why, and the two taps drawn out. With rounds already saved
- * it says to back up first, because the home screen app starts empty and the
- * backup is how they get there.
+ * The card itself: why, and the two taps drawn out. With rounds saved it
+ * says how they get to the home screen app, which starts empty: back up first
+ * while any finished round is not in a backup, or restore the backup there
+ * once everything is in one.
  *
  * "Got it" stores the answer. A refused write still hides the card for this
  * visit; it comes back next launch, which is the honest outcome of an answer
@@ -73,6 +78,11 @@ export function homeScreenCardDue(): boolean {
  */
 export function HomeScreenCard({ hasRounds }: { hasRounds: boolean }) {
   const [visible, setVisible] = useState(homeScreenCardDue);
+  // Read once, like `visible`: a backup saved from Settings re-mounts Home's pick.
+  const [backedUp] = useState(() => {
+    const { lastBackupAt, unbacked } = currentBackupStatus();
+    return lastBackupAt !== null && unbacked === 0;
+  });
   if (!visible) return null;
 
   // Desktop Safari keeps an installed site in the Dock, not on a home screen.
@@ -80,6 +90,9 @@ export function HomeScreenCard({ hasRounds }: { hasRounds: boolean }) {
   const dismiss = () => {
     saveSettings({ installTipDismissed: true });
     setVisible(false);
+    // "Got it" unmounts with the card; keyboard and VoiceOver users land on
+    // the screen's heading rather than <body>.
+    focusScreenHeading();
   };
 
   return (
@@ -91,12 +104,15 @@ export function HomeScreenCard({ hasRounds }: { hasRounds: boolean }) {
         Safari can clear a site’s saved rounds after a week away.{' '}
         {place === 'Dock' ? 'In your Dock' : 'On your Home Screen'}, Trunk keeps them.
       </p>
-      {hasRounds && (
-        <p>
-          Save a backup first (Settings → Back up your rounds). The {place} app starts empty, and
-          you restore the backup there.
-        </p>
-      )}
+      {hasRounds &&
+        (backedUp ? (
+          <p>Your backup is saved. The {place} app starts empty, so restore it there.</p>
+        ) : (
+          <p>
+            Save a backup first (Settings → Back up your rounds). The {place} app starts empty, and
+            you restore the backup there.
+          </p>
+        ))}
       <AddToHomeSteps />
       <div className="keep-rounds-actions end">
         <button type="button" className="btn-ghost" onClick={dismiss}>
@@ -114,5 +130,5 @@ export function HomeScreenCard({ hasRounds }: { hasRounds: boolean }) {
  */
 export function HomeScreenTip() {
   if (storageRisk() !== 'browser') return null;
-  return <p className="hint">Tip: add Trunk to your home screen for one-tap access on the course.</p>;
+  return <p className="hint">Tip: add Trunk to your Home Screen for one-tap access on the course.</p>;
 }

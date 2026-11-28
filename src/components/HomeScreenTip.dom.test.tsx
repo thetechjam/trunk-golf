@@ -27,6 +27,6 @@ describe('HomeScreenTip', () => {
   it('is the plain one-tap line in other browsers', () => {
     vi.spyOn(platform, 'storageRisk').mockReturnValue('browser');
     render(<HomeScreenTip />);
-    expect(tip()!.textContent).toBe('Tip: add Trunk to your home screen for one-tap access on the course.');
+    expect(tip()!.textContent).toBe('Tip: add Trunk to your Home Screen for one-tap access on the course.');
   });
 });

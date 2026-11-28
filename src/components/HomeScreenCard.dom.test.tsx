@@ -2,8 +2,10 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { HomeScreenCard, homeScreenCardDue } from './InstallPrompt';
-import { getSettings } from '../storage';
+import { getSettings, saveRounds, saveSettings } from '../storage';
+import { makeRound } from '../games/testFixtures';
 import { refuseStorageKey } from '../testQuota';
+import { holdHomeScreenCard, releaseHomeScreenCard } from '../homeScreenHold';
 import * as platform from '../platform';
 import type { StorageRisk } from '../platform';
 
@@ -17,6 +19,7 @@ beforeEach(() => localStorage.clear());
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  releaseHomeScreenCard();
 });
 
 const on = (risk: StorageRisk, ios = true) => {
@@ -53,6 +56,73 @@ describe('HomeScreenCard', () => {
     expect(screen.getByText(BACKUP_LINE).textContent).toBe(
       'Save a backup first (Settings → Back up your rounds). The Home Screen app starts empty, and you restore the backup there.'
     );
+  });
+
+  describe('with rounds already in a backup', () => {
+    const BACKED_UP_LINE = 'Your backup is saved. The Home Screen app starts empty, so restore it there.';
+    /** One finished round, saved now, and a backup `offset` ms from now. */
+    const roundAndBackup = (offset: number) => {
+      saveRounds([{ ...makeRound({ status: 'finished' }), id: 'r1' }]);
+      saveSettings({ lastBackupAt: Date.now() + offset });
+    };
+
+    it('says to restore it there, not to back up again', () => {
+      on('evicting');
+      roundAndBackup(1000);
+      render(<HomeScreenCard hasRounds />);
+      expect(screen.getByText(BACKED_UP_LINE)).toBeTruthy();
+      expect(screen.queryByText(BACKUP_LINE)).toBeNull();
+    });
+
+    it('still says to back up first when a round has changed since', () => {
+      on('evicting');
+      roundAndBackup(-60_000);
+      render(<HomeScreenCard hasRounds />);
+      expect(screen.getByText(BACKUP_LINE)).toBeTruthy();
+      expect(screen.queryByText(BACKED_UP_LINE)).toBeNull();
+    });
+
+    it('says neither with no rounds saved', () => {
+      on('evicting');
+      saveSettings({ lastBackupAt: Date.now() + 1000 });
+      render(<HomeScreenCard hasRounds={false} />);
+      expect(screen.queryByText(BACKED_UP_LINE)).toBeNull();
+      expect(screen.queryByText(BACKUP_LINE)).toBeNull();
+    });
+
+    it('in desktop Safari, says the Dock app', () => {
+      on('evicting', false);
+      roundAndBackup(1000);
+      render(<HomeScreenCard hasRounds />);
+      expect(
+        screen.getByText('Your backup is saved. The Dock app starts empty, so restore it there.')
+      ).toBeTruthy();
+    });
+  });
+
+  it('is held back for the session once the backup card on Results is answered', () => {
+    on('evicting');
+    holdHomeScreenCard();
+    expect(homeScreenCardDue()).toBe(false);
+    render(<HomeScreenCard hasRounds />);
+    expect(card()).toBeNull();
+    // Nothing was stored: the next launch shows it again.
+    expect(getSettings().installTipDismissed).toBe(false);
+    releaseHomeScreenCard();
+    expect(homeScreenCardDue()).toBe(true);
+  });
+
+  it('“Got it” moves focus to the screen heading, not <body>', () => {
+    on('evicting');
+    render(
+      <div className="screen">
+        <h1 tabIndex={-1}>Trunk</h1>
+        <HomeScreenCard hasRounds={false} />
+      </div>
+    );
+    screen.getByRole('button', { name: 'Got it' }).focus();
+    gotIt();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
   });
 
   it.each(['browser', 'installed', 'native'] as const)('is not shown when %s', (risk) => {
