@@ -48,21 +48,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lists each team's tee shots. Team names are kept out of Stats, trips, the
   name suggestions and the recall chips — the people on the teams are offered
   instead.
-- **A prompt after the first finished round** to save a backup and add Trunk
-  to the home screen. Safari deletes a site’s data after seven days without
-  a visit otherwise. "Not now", or a successful backup, puts it away; a phone
-  that cannot store the choice still starts. In a Safari tab it says to back
-  up first, because the home screen app starts empty.
-- **A reminder when rounds aren’t backed up.** Trunk now records when a
-  backup was last saved, and the same card returns on Home and Results when
-  finished rounds have changed since: after any new round in a Safari tab,
-  unless snoozed for five days, since Safari can delete it after seven; three
-  rounds and a month in other browsers; ten rounds and three months in an
-  installed app. Outside a Safari tab, "Not now" waits out the same quiet
-  period. Phones that already had a finished round when the first prompt
-  arrived, and were never asked, get the reminder too — and so do people who
-  tapped the old "Don’t ask again", because that choice was stored in the
-  same flag as the phones that were dismissed automatically.
+- **A prompt after the first finished round** to save a backup: "Keep your
+  rounds safe". It comes once, on the Results of the round you just finished,
+  below who pays whom and above the awards (after the boards on a league
+  night) — never above the result, and never on a round opened again from
+  Home or the history. Its words follow where Trunk runs: in a Safari tab,
+  that Safari can clear the rounds after a week away; in other browsers, that
+  they live only in this browser; in an installed app, that a backup is the
+  copy that survives a new phone. After a save it says "Backup saved", with
+  a Done button, and in a Safari tab offers "Show me how to add to Home
+  Screen" with the two taps drawn out and the restore step. "Not now", or a
+  successful backup, puts it away; a phone that cannot store the choice still
+  starts.
+- **A reminder when rounds aren’t backed up** ("3 rounds aren’t backed up").
+  Trunk now records when a backup was last saved, and the same card returns
+  on Home when finished rounds have changed since: after a new round in a
+  Safari tab, three rounds and a month in other browsers, ten rounds and three
+  months in an installed app — and in every case no sooner than five days
+  after the later of the last backup and the last "Not now". After "Not now"
+  twice, a reminder offers "Don’t remind me"; Settings has a **Backup
+  reminders** switch to turn them off or back on. Phones that already had a
+  finished round when the first prompt arrived, and were never asked, get the
+  reminder too — and so do people who tapped the old "Don’t ask again",
+  because that choice was stored in the same flag as the phones that were
+  dismissed automatically.
+- **One message on Home.** Home shows at most one of the backup card, the
+  Home Screen card and the grey tip, chosen when it opens, so answering one
+  never uncovers another. In a Safari tab, the first open shows **Add Trunk
+  to your Home Screen** (Dock on a Mac) under the empty state or the rounds:
+  why, the two taps drawn out, and — with rounds saved — to back up first.
+  "Got it" puts it away for good. Other browsers keep the one-line tip.
 - **The last backup in Settings.** Under "Back up your rounds": "Never backed
   up", or "Last backup: Tuesday · 2 rounds since". It updates as soon as a
   backup or restore finishes. A full restore counts as a backup, so moving
@@ -70,7 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Bringing rounds from Safari to the home screen app.** On iPhone, iPad and
   Mac, a Trunk added to the home screen or Dock has its own storage and opens
   empty. After a backup in a Safari tab, Trunk says the next steps: add it to
-  the home screen (with how), open it, restore the backup. An empty home
+  the Home Screen (with how), open it, restore the backup. An empty home
   screen app asks "Played in Safari first?" and offers the restore there.
 - **Erase everything**, at the bottom of Settings. The privacy page said
   there was no single wipe button in Trunk yet; now there is. Two taps, as
