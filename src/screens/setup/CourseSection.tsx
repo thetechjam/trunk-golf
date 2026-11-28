@@ -1,4 +1,4 @@
-import type { Dispatch } from 'react';
+import { useRef, type Dispatch } from 'react';
 import type { SavedCourse } from '../../types';
 import type { FetchedCourse } from '../../courses/openGolfApi';
 import { CourseSearch } from '../../components/CourseSearch';
@@ -22,8 +22,12 @@ interface CourseProps {
   onRemove: (id: string) => void;
   /** The confirmation for this row, when the last thing done happened here. */
   note: string | null;
-  /** The course on screen is the one New Round remembered from last time. */
-  sameAsLast?: boolean;
+  /**
+   * The remembered course's name while its card (pars, stroke indexes, slope
+   * and rating) is still the one on screen; absent once another card has
+   * replaced it or there was none.
+   */
+  lastCourse?: string;
   /** Clears the remembered course back to a blank one. */
   onElsewhere?: () => void;
 }
@@ -39,26 +43,25 @@ export function CourseSection({
   onSend,
   onRemove,
   note,
-  sameAsLast = false,
+  lastCourse,
   onElsewhere,
 }: CourseProps) {
+  const searchInput = useRef<HTMLInputElement>(null);
   return (
     <>
-      {sameAsLast && onElsewhere && (
+      {lastCourse && onElsewhere && (
         <p className="hint-inline course-same">
-          Same course as last time.{' '}
+          {course.trim() === lastCourse
+            ? 'Same course as last time.'
+            : `Pars and ratings are still from ${lastCourse}.`}{' '}
           <button
             type="button"
             className="btn-ghost"
-            onClick={(e) => {
-              // The button goes with the note; the search field, just below,
-              // is where the next course is chosen, so that is where focus
-              // goes. Found before the reset re-renders the row.
-              const input = e.currentTarget
-                .closest('p')
-                ?.parentElement?.querySelector<HTMLInputElement>('.course-search input');
+            onClick={() => {
               onElsewhere();
-              input?.focus();
+              // The button goes with the note and leaves with it; the search
+              // field, just below, is where the next course is chosen.
+              searchInput.current?.focus();
             }}
           >
             Play somewhere else
@@ -66,7 +69,7 @@ export function CourseSection({
         </p>
       )}
 
-      <CourseSearch value={course} onChange={onCourse} onPick={onPick} />
+      <CourseSearch value={course} onChange={onCourse} onPick={onPick} inputRef={searchInput} />
 
       <ScanCard courseName={course} onApply={onScan} />
 

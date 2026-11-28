@@ -130,14 +130,48 @@ describe('remembered course', () => {
     expect(started[0].rating).toBeUndefined();
   });
 
-  it('drops the note once another course name is typed', async () => {
+  it('says the card is still last time’s when another name is typed over it', async () => {
     store([round()]);
+    const user = userEvent.setup();
+    const started: Round[] = [];
+    render(<Setup onCancel={() => {}} onStart={(r) => started.push(r)} />);
+    await user.click(rowHead('Course'));
+    const input = document.querySelector<HTMLInputElement>('.course-search input')!;
+    await user.clear(input);
+    await user.type(input, 'Oak Hollow');
+    expect(screen.queryByText(/Same course as last time/)).toBeNull();
+    expect(screen.getByText(/Pars and ratings are still from Sunset Ridge\./)).toBeTruthy();
+
+    // The way out is still there, and clears the old card.
+    await user.click(screen.getByRole('button', { name: 'Play somewhere else' }));
+    expect(screen.queryByText(/Pars and ratings are still from/)).toBeNull();
+    expect(summaryOf('Course')).toBe('Not set');
+    expect(document.activeElement).toBe(input);
+
+    // Typing the old name back does not bring the note back: the card is gone.
+    await user.type(input, 'Sunset Ridge');
+    expect(screen.queryByText(/Same course as last time|Pars and ratings are still/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: /Same crew/ }));
+    await user.click(screen.getByRole('button', { name: /Start Round/i }));
+    expect(started[0].holes.every((h) => h.par === 4)).toBe(true);
+    expect(started[0].slope).toBeUndefined();
+  });
+
+  it('drops the note once a saved course replaces the card', async () => {
+    store([round()]);
+    localStorage.setItem(
+      'press.courses.v1',
+      JSON.stringify([{ id: 'c1', name: 'Oak Hollow', holes: realCard18().map((h) => ({ ...h, par: 3 })) }])
+    );
     const user = userEvent.setup();
     render(<Setup onCancel={() => {}} onStart={() => {}} />);
     await user.click(rowHead('Course'));
     const input = document.querySelector<HTMLInputElement>('.course-search input')!;
     await user.type(input, 'x');
-    expect(screen.queryByText(/Same course as last time/)).toBeNull();
+    expect(screen.getByText(/Pars and ratings are still from Sunset Ridge/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /^Oak Hollow/ }));
+    expect(summaryOf('Course')).toBe('Oak Hollow');
+    expect(screen.queryByText(/Same course as last time|Pars and ratings are still/)).toBeNull();
   });
 });
 
@@ -146,9 +180,11 @@ describe('play again', () => {
     // A later round elsewhere does not change what is played again.
     store([round({ id: 'later', course: 'Elsewhere', games: ['wolf'] }), round()]);
     render(<Setup onCancel={() => {}} onStart={() => {}} again={round()} />);
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(screen.getByText(/^Same players, course and games as last time/).textContent).toBe(
       'Same players, course and games as last time. Change anything, then start.'
     );
+    // Visible from the start, so not a live region (nothing to announce).
+    expect(screen.queryByRole('status')).toBeNull();
     expect(names()).toEqual(['Mike', 'Dave', 'Chris', 'Tom']);
     expect(summaryOf('Course')).toBe('Sunset Ridge');
     expect(summaries()).toContain('Nassau, Skins');
@@ -203,10 +239,33 @@ describe('play again', () => {
 
   it('says only players and games when that round had no course', () => {
     render(<Setup onCancel={() => {}} onStart={() => {}} again={round({ course: undefined })} />);
-    expect(screen.getByRole('status').textContent).toBe(
+    expect(screen.getByText(/^Same players and games as last time/).textContent).toBe(
       'Same players and games as last time. Change anything, then start.'
     );
     expect(summaryOf('Course')).toBe('Not set');
+  });
+
+  it('does not promise a course it cannot load (a seven-hole round from a link)', () => {
+    render(
+      <Setup onCancel={() => {}} onStart={() => {}} again={round({ holes: realCard18().slice(0, 7) })} />
+    );
+    expect(summaryOf('Course')).toBe('Not set');
+    expect(screen.getByText(/^Same players and games as last time/)).toBeTruthy();
+    expect(screen.queryByText(/course and games/)).toBeNull();
+  });
+
+  it('keeps the Wolf order: the same players lead off the same holes', async () => {
+    const user = userEvent.setup();
+    const started: Round[] = [];
+    const again = round({ games: ['wolf'], options: options() });
+    render(<Setup onCancel={() => {}} onStart={(r) => started.push(r)} again={again} />);
+    await user.click(screen.getByRole('button', { name: /Start Round/i }));
+    const r = started[0];
+    const nameOf = (rd: Round, id: string) => rd.players.find((p) => p.id === id)!.name;
+    // The order is the players' order on the card (games/wolf.ts wolfForHole),
+    // which the seed keeps: Mike tees off as Wolf on 1, Dave on 2, and so on.
+    const wolves = r.holes.map((h) => nameOf(r, r.wolf[h.number].wolfPlayerId));
+    expect(wolves.slice(0, 5)).toEqual(['Mike', 'Dave', 'Chris', 'Tom', 'Mike']);
   });
 
   it('still checks the round before starting it', async () => {

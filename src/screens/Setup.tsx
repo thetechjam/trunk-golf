@@ -69,6 +69,11 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
   // The name of the course the screen opened on, for "Same course as last
   // time" — shown only while that is still the course on screen.
   const rememberedCourse = start0.course?.course.trim() ?? '';
+  // Whether the pars, stroke indexes, slope and rating on screen are still
+  // the remembered ones. Tied to the card, not the name: typing a new name
+  // over it keeps last time's card, and the note has to say so rather than
+  // vanish on the first keystroke. Cleared once another card replaces it.
+  const [cardFromLast, setCardFromLast] = useState(() => rememberedCourse !== '');
   const [players, setPlayers] = useState<Player[]>(() =>
     seed && seed.players.length > 0
       ? seed.players
@@ -455,8 +460,10 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
       </header>
 
       {again && (
-        <p className="hint-inline" role="status">
-          {again.course?.trim()
+        // A hint already on screen when the page opens, not an announcement:
+        // a live region present at mount is not read out anyway.
+        <p className="hint-inline">
+          {rememberedCourse
             ? 'Same players, course and games as last time. Change anything, then start.'
             : 'Same players and games as last time. Change anything, then start.'}
         </p>
@@ -489,15 +496,27 @@ export function Setup({ onCancel, onStart, again = null }: Props) {
           <CourseSection
             course={cs.course}
             onCourse={(name) => dispatch({ type: 'course', name })}
-            onPick={loadFromApi}
-            onScan={loadFromScan}
+            onPick={(c) => {
+              setCardFromLast(false);
+              loadFromApi(c);
+            }}
+            onScan={(c) => {
+              setCardFromLast(false);
+              loadFromScan(c);
+            }}
             courses={courses}
-            onLoad={loadCourse}
+            onLoad={(c) => {
+              setCardFromLast(false);
+              loadCourse(c);
+            }}
             onSend={setSendingCourse}
             onRemove={removeCourse}
             note={cs.savedNote?.row === 'course' ? cs.savedNote.text : null}
-            sameAsLast={!!rememberedCourse && cs.course.trim() === rememberedCourse}
-            onElsewhere={() => dispatch({ type: 'reset' })}
+            lastCourse={cardFromLast ? rememberedCourse : undefined}
+            onElsewhere={() => {
+              setCardFromLast(false);
+              dispatch({ type: 'reset' });
+            }}
           />
         </SetupRow>
 
