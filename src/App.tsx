@@ -67,6 +67,11 @@ export default function App() {
    * ordinary New Round.
    */
   const [again, setAgain] = useState<Round | null>(null);
+  /**
+   * New Round was opened from Home's Trip row: it shows the trip block at the
+   * top, ready to name one. App state, never stored, like `again`.
+   */
+  const [startTrip, setStartTrip] = useState(false);
   // Read synchronously so the first paint is the shared round opening rather
   // than the Home screen flashing up and being replaced a frame later.
   const [incoming, setIncoming] = useState<Incoming>(() =>
@@ -149,8 +154,14 @@ export default function App() {
     // A lazy screen may not have arrived yet (see lazyScreens.ts), so the
     // heading is waited for rather than assumed. Almost always it is already
     // there; the observer is the cold-cache case.
+    // From Home's Trip row, New Round has already focused the trip's name
+    // field (keyboard up); taking focus to the heading after it mounts would
+    // steal it back. So that field is the target when it is there.
     const focusHeading = () => {
-      const h = document.querySelector<HTMLElement>('.screen h1');
+      const h =
+        (view === 'setup' && startTrip
+          ? document.querySelector<HTMLElement>('.screen .trip-name input')
+          : null) ?? document.querySelector<HTMLElement>('.screen h1');
       h?.focus();
       return !!h;
     };
@@ -164,7 +175,9 @@ export default function App() {
       watch.disconnect();
       window.clearTimeout(stop);
     };
-  }, [view]);
+    // startTrip only ever changes alongside a move to New Round or away from
+    // Home, so listing it re-runs nothing that [view] alone would not.
+  }, [view, startTrip]);
 
   // Without this, the Android back gesture exits an installed PWA mid-round.
   useEffect(() => {
@@ -497,21 +510,31 @@ export default function App() {
         <Home
           onNew={() => {
             setAgain(null);
+            setStartTrip(false);
             load(null);
             goTo('setup');
           }}
           onPlayAgain={(r) => {
             setAgain(r);
+            setStartTrip(false);
+            load(null);
+            goTo('setup');
+          }}
+          onNewTrip={() => {
+            setAgain(null);
+            setStartTrip(true);
             load(null);
             goTo('setup');
           }}
           onNewLeague={() => {
             setAgain(null);
+            setStartTrip(false);
             load(null);
             goTo('leagueSetup');
           }}
           onNewScramble={() => {
             setAgain(null);
+            setStartTrip(false);
             load(null);
             goTo('scrambleSetup');
           }}
@@ -569,6 +592,7 @@ export default function App() {
       {view === 'setup' && (
         <Setup
           again={again}
+          startTrip={startTrip}
           onCancel={() => goTo('home')}
           onStart={(r) => {
             load(r);
