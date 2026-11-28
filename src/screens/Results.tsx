@@ -32,6 +32,11 @@ interface Props {
   onKeep?: () => void;
   /** Opens the trip this round is part of. */
   onTrip?: (tripId: string) => void;
+  /**
+   * True only for the round finished on this visit. The backup card is asked
+   * once, there, rather than on every finished round opened from the history.
+   */
+  justFinished?: boolean;
 }
 
 function buildSummary(round: Round): string {
@@ -96,7 +101,16 @@ function buildSummary(round: Round): string {
   return lines.join('\n');
 }
 
-export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep, onTrip }: Props) {
+export function Results({
+  round,
+  onChange,
+  onHome,
+  onBackToPlay,
+  unkept,
+  onKeep,
+  onTrip,
+  justFinished,
+}: Props) {
   const [showHcp, setShowHcp] = useState(false);
   const [sharing, setSharing] = useState(false);
   const results = activeResults(round).map((r) => asScrambleResult(round, r));
@@ -109,6 +123,9 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
     const p = round.players.find((q) => q.id === id);
     return usesHandicaps(round) && p ? courseHandicapFor(round, p) : undefined;
   };
+  // Nothing sits above the result: the backup question comes after who pays
+  // whom, which is what the screen is opened for.
+  const keepPrompt = justFinished && !unkept && round.status === 'finished' ? <KeepRoundsPrompt /> : null;
 
   return (
     <div className="screen results">
@@ -123,8 +140,6 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
           Home
         </button>
       </header>
-
-      {!unkept && round.status === 'finished' && <KeepRoundsPrompt />}
 
       {unkept && (
         <div className="unkept" role="status">
@@ -182,6 +197,7 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
               onSetHandicap={(id, n) => onChange(setFirstNightHandicap(round, id, n))}
             />
           </section>
+          {keepPrompt}
         </>
       ) : (
         <>
@@ -205,6 +221,7 @@ export function Results({ round, onChange, onHome, onBackToPlay, unkept, onKeep,
               <span aria-hidden="true">›</span>
             </button>
           )}
+          {keepPrompt}
           <Awards round={round} />
           <section className="boards">
             {results.map((r) => (

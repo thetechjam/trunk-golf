@@ -76,6 +76,13 @@ export default function App() {
    */
   const [unkept, setUnkept] = useState(false);
   /**
+   * The round finished on this visit, if any. Results asks about a backup
+   * only right after Finish — not every time an old round is opened — so the
+   * question comes once, below the settle-up, when it is relevant. Cleared by
+   * load(), so opening any round from Home, History or a trip never shows it.
+   */
+  const [justFinishedId, setJustFinishedId] = useState<string | null>(null);
+  /**
    * True from a save that failed until one succeeds. Storage full is the
    * realistic cause, and the one thing worse than losing the round on
    * reload is doing so after an hour of scoring that looked saved.
@@ -287,6 +294,7 @@ export default function App() {
   const load = (next: Round | null) => {
     setRound(next);
     setUnkept(false);
+    setJustFinishedId(null);
   };
 
   const update = (next: Round) => {
@@ -358,6 +366,7 @@ export default function App() {
     if (!round) return;
     // Finish is only offered on the card, so it keeps a sent round too.
     updateFromCard({ ...round, status: 'finished' });
+    setJustFinishedId(round.id);
     if (!isNative()) void requestPersistentStorage();
     nav.replace('results');
   };
@@ -593,6 +602,7 @@ export default function App() {
           unkept={unkept}
           onKeep={keep}
           onTrip={openTrip}
+          justFinished={round.id === justFinishedId}
         />
       )}
       </Suspense>

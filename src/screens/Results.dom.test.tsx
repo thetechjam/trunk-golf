@@ -175,3 +175,87 @@ describe('the order of the screen', () => {
     expect(follows(settlement!, awards!)).toBe(true);
   });
 });
+
+/**
+ * The backup card. It used to open the screen on every finished round, old
+ * ones included, above the result people came to read. Now it is asked once,
+ * on the round just finished, after who pays whom.
+ */
+describe('the backup card', () => {
+  const follows = (a: Element, b: Element) =>
+    !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+  // The card asks about rounds on this device, so the round has to be kept.
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('press.rounds.v1', JSON.stringify([round()]));
+  });
+  afterEach(() => localStorage.clear());
+
+  const showFinished = (props: { justFinished?: boolean; unkept?: boolean }, over: Partial<Round> = {}) =>
+    render(
+      <Results
+        round={round(over)}
+        onChange={() => {}}
+        onHome={() => {}}
+        onBackToPlay={() => {}}
+        {...props}
+      />
+    );
+
+  it('is not shown on a round opened from the history', () => {
+    const { container } = showFinished({});
+    expect(container.querySelector('.keep-rounds')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Save a backup' })).toBeNull();
+  });
+
+  it('follows the settle-up on the round just finished, ahead of the awards', () => {
+    // Bo's 8 is a Snowman, so there is an award to place.
+    const { container } = showFinished(
+      { justFinished: true },
+      { scores: { ...round().scores, 1: { p1: 4, p2: 8 } } }
+    );
+    const card = container.querySelector('.keep-rounds');
+    const settlement = container.querySelector('.settlement');
+    const awards = container.querySelector('.awards');
+    expect(card && settlement && awards).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Save a backup' })).toBeTruthy();
+    expect(follows(settlement!, card!)).toBe(true);
+    expect(follows(card!, awards!)).toBe(true);
+    // Nothing above the result.
+    expect(container.querySelector('.results-meta')!.previousElementSibling).toBe(
+      container.querySelector('header.bar')
+    );
+    expect(container.querySelector('.winner-hero')!.nextElementSibling).toBe(settlement);
+  });
+
+  it('is not shown on a round that is not kept on this device', () => {
+    const { container } = showFinished({ justFinished: true, unkept: true });
+    expect(container.querySelector('.keep-rounds')).toBeNull();
+  });
+
+  it('comes after the boards on a league night, before Share', () => {
+    const { container } = showFinished(
+      { justFinished: true },
+      {
+        games: [],
+        options: {
+          ...round().options,
+          stakes: {},
+          league: {
+            pointsPerMatch: 3,
+            teams: [
+              { name: 'The Hackers', aId: 'p1', bId: 'p2' },
+              { name: 'Fore Play', aId: 'p1', bId: 'p2' },
+            ],
+          },
+        },
+      }
+    );
+    const card = container.querySelector('.keep-rounds');
+    const boards = container.querySelector('.boards');
+    const share = container.querySelector('.share-open');
+    expect(card && boards && share).toBeTruthy();
+    expect(follows(boards!, card!)).toBe(true);
+    expect(follows(card!, share!)).toBe(true);
+  });
+});
