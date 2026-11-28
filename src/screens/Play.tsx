@@ -1,4 +1,4 @@
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import type { JunkClaims, Round, WolfChoice } from '../types';
 import { LEAGUE_MAX_SCORE, pickedUp } from '../games/league';
 import { setFirstNightHandicap } from '../games/roundEdits';
@@ -24,8 +24,45 @@ import { GearIcon, PencilIcon } from '../icons';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { EditHandicaps } from '../components/EditHandicaps';
 import { SendRound } from '../lazyScreens';
+import {
+  cellState,
+  editSpoken,
+  editText,
+  pickupsWith,
+  restoreCell,
+  sameCell,
+  undoLabel,
+  undoneText,
+  type CellState,
+} from '../scoreEdit';
 
 type PlayMode = 'hole' | 'board' | 'card';
+
+/** The last change made on the Card, for its Undo row. */
+interface CardEdit {
+  holeNumber: number;
+  playerId: string;
+  before: CellState;
+  after: CellState;
+  /** When it was made (Date.now()), for the double-tap guard. */
+  at: number;
+  /** Undone already: the row says so, with no button. */
+  undone?: boolean;
+}
+
+/**
+ * The Undo row itself does not time out: it stays until the next edit, a tab
+ * switch or a move to another hole, so a keyboard or screen-reader user has
+ * time to reach it. Only the "back to" line after an Undo goes by itself.
+ */
+const UNDONE_TOAST_MS = 4000;
+/**
+ * The sheet closes on the first tap and the Undo row appears in the same
+ * frame, roughly where the chips and Clear were. The second tap of a
+ * double-tap (a habit the Hole tab's re-tap-to-clear teaches) must not land on
+ * Undo or on the foot's button, so for this long after an edit both ignore it.
+ */
+const EDIT_GUARD_MS = 400;
 
 interface Props {
   round: Round;
@@ -51,6 +88,25 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
   const [showSettings, setShowSettings] = useState(false);
   const [showHcp, setShowHcp] = useState(false);
   const [handingOver, setHandingOver] = useState(false);
+  const [cardEdit, setCardEdit] = useState<CardEdit | null>(null);
+  const toastRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+
+  // The "back to" line goes by itself. It holds focus after Undo, so hand
+  // focus to the title first rather than let it fall to the page.
+  useEffect(() => {
+    if (!cardEdit?.undone) return;
+    const t = setTimeout(() => {
+      if (toastRef.current?.contains(document.activeElement))
+        titleRef.current?.focus({ preventScroll: true });
+      setCardEdit(null);
+    }, UNDONE_TOAST_MS);
+    return () => clearTimeout(t);
+  }, [cardEdit]);
+
+  /** A Card edit landed a moment ago, so this tap is likely a double-tap's second. */
+  const justEdited = () =>
+    cardEdit != null && !cardEdit.undone && Date.now() - cardEdit.at < EDIT_GUARD_MS;
 
   // Keep screen awake is set in the sheet now, so re-read it on close: the lock
   // itself lives here, for as long as Play is mounted, and has to follow.
@@ -75,6 +131,7 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
   const [dir, setDir] = useState<'next' | 'prev'>('next');
   const go = (next: number) => {
     setWarn(null);
+    setCardEdit(null);
     const clamped = Math.max(0, Math.min(round.holes.length - 1, next));
     setDir(clamped >= idx ? 'next' : 'prev');
     setIdx(clamped);
@@ -87,16 +144,8 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
     if (window.scrollY > 0) window.scrollTo({ top: 0 });
   };
 
-  /** The round's pick-ups with this player's on this hole set or cleared. */
-  const pickupsWith = (holeNumber: number, playerId: string, on: boolean) => {
-    const here = (round.pickups?.[holeNumber] ?? []).filter((id) => id !== playerId);
-    const next = { ...(round.pickups ?? {}), [holeNumber]: on ? [...here, playerId] : here };
-    if (!next[holeNumber].length) delete next[holeNumber];
-    return Object.keys(next).length ? next : undefined;
-  };
-
-  const setScoreAt = (holeNumber: number, playerId: string, value: number | null) => {
-    setWarn(null);
+  /** The round with one score set — what every score entry, Hole or Card, comes to. */
+  const scoredAt = (holeNumber: number, playerId: string, value: number | null): Round => {
     // League rule: nothing over a 9. The engine caps too; this keeps the card
     // honest about what was scored.
     const capped =
@@ -104,29 +153,70 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
     const holeScores = { ...(round.scores[holeNumber] ?? {}), [playerId]: capped };
     const next: Round = { ...round, scores: { ...round.scores, [holeNumber]: holeScores } };
     // A number entered over an X replaces it: the player did hole out after all.
-    if (pickedUp(round, holeNumber, playerId)) next.pickups = pickupsWith(holeNumber, playerId, false);
-    onChange(next);
+    if (pickedUp(round, holeNumber, playerId))
+      next.pickups = pickupsWith(round, holeNumber, playerId, false);
+    return next;
+  };
+
+  const setScoreAt = (holeNumber: number, playerId: string, value: number | null) => {
+    setWarn(null);
+    onChange(scoredAt(holeNumber, playerId, value));
   };
 
   /**
-   * League: toggle a pick-up. An X is recorded as the league maximum of 9, so
-   * the hole counts as scored and totals stay sane; the flag is what makes
-   * the league engine treat it as a forfeited hole. Toggling it off clears the
-   * score as well, back to a blank.
+   * League: the round with a pick-up toggled. An X is recorded as the league
+   * maximum of 9, so the hole counts as scored and totals stay sane; the flag
+   * is what makes the league engine treat it as a forfeited hole. Toggling it
+   * off clears the score as well, back to a blank.
    */
-  const togglePickup = (playerId: string) => {
-    setWarn(null);
-    const on = !pickedUp(round, hole.number, playerId);
+  const pickupAt = (holeNumber: number, playerId: string): Round => {
+    const on = !pickedUp(round, holeNumber, playerId);
     const holeScores = {
-      ...(round.scores[hole.number] ?? {}),
+      ...(round.scores[holeNumber] ?? {}),
       [playerId]: on ? LEAGUE_MAX_SCORE : null,
     };
-    onChange({
+    return {
       ...round,
-      scores: { ...round.scores, [hole.number]: holeScores },
-      pickups: pickupsWith(hole.number, playerId, on),
-    });
+      scores: { ...round.scores, [holeNumber]: holeScores },
+      pickups: pickupsWith(round, holeNumber, playerId, on),
+    };
   };
+
+  const togglePickup = (playerId: string) => {
+    setWarn(null);
+    onChange(pickupAt(hole.number, playerId));
+  };
+
+  /**
+   * A change made on the Card: kept, and offered back for one Undo. A tap
+   * that leaves the cell as it was changes nothing and says nothing.
+   */
+  const editFromCard = (next: Round, holeNumber: number, playerId: string) => {
+    const before = cellState(round, holeNumber, playerId);
+    const after = cellState(next, holeNumber, playerId);
+    if (sameCell(before, after)) return;
+    setWarn(null);
+    onChange(next);
+    setCardEdit({ holeNumber, playerId, before, after, at: Date.now() });
+  };
+
+  /** Put back that one cell, on the round as it is now. */
+  const undoCardEdit = () => {
+    if (!cardEdit || justEdited()) return;
+    onChange(restoreCell(round, cardEdit.holeNumber, cardEdit.playerId, cardEdit.before));
+    setCardEdit({ ...cardEdit, undone: true });
+    // The button just pressed goes away; keep focus where the news is.
+    toastRef.current?.focus({ preventScroll: true });
+  };
+
+  const editName = cardEdit
+    ? (round.players.find((p) => p.id === cardEdit.playerId)?.name ?? '')
+    : '';
+  const editSaid = !cardEdit
+    ? ''
+    : cardEdit.undone
+      ? undoneText(editName, cardEdit.holeNumber, cardEdit.before)
+      : editSpoken(editName, cardEdit.holeNumber, cardEdit.before, cardEdit.after);
 
   const setScore = (playerId: string, value: number | null) =>
     setScoreAt(hole.number, playerId, value);
@@ -315,7 +405,7 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
         <button className="btn-ghost icon back" onClick={onExit} aria-label="Back to rounds">
           ‹
         </button>
-        <h1 tabIndex={-1}>{round.course || 'Round'}</h1>
+        <h1 ref={titleRef} tabIndex={-1}>{round.course || 'Round'}</h1>
         <button className="btn-ghost" onClick={tryFinish}>
           Finish
         </button>
@@ -337,7 +427,10 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
               // reader heard three identical buttons. Pressed, as the Card's
               // Front 9 / Back 9 / All 18 already are.
               aria-pressed={mode === m}
-              onClick={() => setMode(m)}
+              onClick={() => {
+                setMode(m);
+                setCardEdit(null);
+              }}
             >
               {m === 'hole' ? 'Hole' : m === 'board' ? 'Board' : 'Card'}
             </button>
@@ -427,7 +520,10 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
             setIdx(i);
             setMode('hole');
           }}
-          onScore={setScoreAt}
+          onScore={(h, p, v) => editFromCard(scoredAt(h, p, v), h, p)}
+          onPickup={
+            round.options.league ? (h, p) => editFromCard(pickupAt(h, p), h, p) : undefined
+          }
         />
       )}
 
@@ -445,19 +541,43 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
             </div>
           </div>
         )}
+        {/* Mounted always, so the change is heard on the first edit too. */}
+        <p role="status" className="sr-only">
+          {mode === 'card' ? editSaid : ''}
+        </p>
+        {mode === 'card' && cardEdit && (
+          // A row in the foot, not a floating toast: it must never cover the
+          // button under it (see 14-new-round.css).
+          <div className="edit-toast" ref={toastRef} tabIndex={-1}>
+            <span aria-hidden="true">
+              {cardEdit.undone
+                ? undoneText(editName, cardEdit.holeNumber, cardEdit.before)
+                : editText(editName, cardEdit.holeNumber, cardEdit.before, cardEdit.after)}
+            </span>
+            {!cardEdit.undone && (
+              <button
+                className="edit-toast-undo"
+                onClick={undoCardEdit}
+                aria-label={undoLabel(editName, cardEdit.holeNumber, cardEdit.before)}
+              >
+                Undo
+              </button>
+            )}
+          </div>
+        )}
         {round.status === 'finished' ? (
           // Reopened from Results to fix a score: it is not being finished
           // again, and "Finish Round" on a finished round asked a question
           // that had been answered.
-          <button className="btn-primary big" onClick={onFinish}>
+          <button className="btn-primary big" onClick={() => justEdited() || onFinish()}>
             Back to results →
           </button>
         ) : last ? (
-          <button className="btn-primary big" onClick={tryFinish}>
+          <button className="btn-primary big" onClick={() => justEdited() || tryFinish()}>
             Finish Round →
           </button>
         ) : (
-          <button className="btn-primary big" onClick={tryNext}>
+          <button className="btn-primary big" onClick={() => justEdited() || tryNext()}>
             Next Hole →
           </button>
         )}

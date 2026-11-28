@@ -387,18 +387,18 @@
   min-height: 28px;
   cursor: pointer;
 }
-.sc-input {
-  width: 34px;
-  padding: 2px;
-  text-align: center;
-  font: inherit;
-  color: var(--ink);
-  background: var(--bg);
-  border: 2px solid var(--fairway);
-  border-radius: var(--r-xs);
+/* The Card's fix-a-score sheet: the Hole tab's chips, then Clear. */
+.sc-edit-clear {
+  min-height: var(--tap);
+  width: 100%;
+  /* No wider than the chip pad above it (.score-chips-wrap, 06-play.css). */
+  max-width: 452px;
 }
-.sc-cell .sc-input {
-  margin: 6px 3px;
+/* Under the grid: nothing on the cells says they can be tapped. */
+.sc-hint {
+  font-size: var(--fs-md);
+  color: var(--muted);
+  margin: 8px 2px 0;
 }
 
 /* ---------- About ---------- */

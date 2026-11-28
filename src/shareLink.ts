@@ -67,7 +67,7 @@ export const COURSE_KEY = 'c';
 
 /**
  * Scores are packed one base-36 character each, so the format can carry 0..35.
- * Entry clamps to 1..15 (`scoreEntry.ts`), leaving room to spare; a score
+ * Entry offers 1..15 (`SCORE_MAX` in `scoreChips.ts`), leaving room to spare; a score
  * outside the range makes `encodeRound` refuse rather than quietly round it,
  * because a link that lies about a score settles the round for the wrong money.
  */
