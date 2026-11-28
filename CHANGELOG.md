@@ -150,7 +150,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **One-line descriptions under League and Scramble on Home**: "Team points,
   season standings" and "Teams, one ball". The buttons keep their names.
 - **A note on New Round when handicaps are in play and the course has no
-  stroke indexes**: the strokes would fall on holes 1, 2, 3…, and tapping the
+  stroke indexes**: the strokes would fall in hole order, and tapping the
   note opens the course, or Holes & pars, to set them.
 
 ### Changed

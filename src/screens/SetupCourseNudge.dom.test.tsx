@@ -7,14 +7,15 @@ import type { Round, SavedCourse } from '../types';
 
 /**
  * The note on New Round when handicap strokes are in play and no hole has a
- * stroke index: those strokes fall on holes 1, 2, 3… in order, and nothing
- * used to say so. A note, not a block — Start Round still starts.
+ * stroke index: those strokes fall in hole order, and nothing used to say
+ * so. A note, not a block — Start Round still starts.
  */
 
-const NO_COURSE = /^No course set — handicap strokes will fall on holes 1, 2, 3…/;
-const NO_SI = /^No hole difficulty set — handicap strokes will fall on holes 1, 2, 3…/;
+const NO_COURSE = /^No course set — handicap strokes will fall in hole order\./;
+const NO_SI = /^No hole difficulty set — handicap strokes will fall in hole order\./;
 
-const nudge = () => screen.queryByRole('button', { name: /handicap strokes will fall on holes/ });
+const nudge = () =>
+  screen.queryByRole('button', { name: /handicap strokes will fall in hole order/ });
 
 const rowHead = (label: string) =>
   [...document.querySelectorAll<HTMLElement>('.setup-row-head')].find((el) =>
@@ -47,7 +48,8 @@ describe('the course nudge on New Round', () => {
   it('shows with a name and a handicap on Skins, the default game', async () => {
     await setUp({ handicap: '12' });
     expect(nudge()?.textContent).toMatch(NO_COURSE);
-    expect(nudge()?.closest('.course-nudge')?.getAttribute('role')).toBe('status');
+    // Not a live region: its wording changes as the course is typed.
+    expect(nudge()?.closest('[role="status"], [aria-live]')).toBeNull();
   });
 
   it('does not show without a handicap', async () => {
