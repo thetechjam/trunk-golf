@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { useState } from 'react';
-import { render, screen, cleanup, within } from '@testing-library/react';
+import { render, screen, cleanup, within, fireEvent, act, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { Round } from '../types';
 import { Play } from './Play';
-import { holes18, scrambleRound } from '../games/testFixtures';
+import { holes18, makeRound, player, scrambleRound } from '../games/testFixtures';
 
 /**
  * A scramble on the Play screen: crediting a shot reaches the round, and the
@@ -211,5 +211,160 @@ describe('the Board tab', () => {
     await user.click(screen.getByRole('button', { name: 'Board' }));
     expect(screen.getByRole('button', { name: 'Tee shots' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Tee shots, Hackers' }).id).toBe('board-tee-shots');
+  });
+});
+
+describe('fixing a score on the Card', () => {
+  const four = [player('p1', 'Al'), player('p2', 'Bo'), player('p3', 'Cy'), player('p4', 'Di')];
+  // Finished, so Play opens on the Card. Hole 1 is a par 4.
+  const finished = (): Round =>
+    makeRound({
+      players: four,
+      holes: nine,
+      status: 'finished',
+      scores: { 1: { p1: 5, p2: 4, p3: 3, p4: 6 }, 2: { p1: 4 } },
+    });
+  const league = (): Round =>
+    makeRound({
+      players: four,
+      holes: nine,
+      status: 'finished',
+      options: {
+        league: {
+          pointsPerMatch: 1,
+          teams: [
+            { aId: 'p1', bId: 'p2' },
+            { aId: 'p3', bId: 'p4' },
+          ],
+        },
+      },
+      scores: { 1: { p1: 9, p2: 4, p3: 5, p4: 4 } },
+      pickups: { 1: ['p1'] },
+    });
+
+  const cell = (name: RegExp) => fireEvent.click(screen.getByRole('button', { name }));
+  const chip = (name: string) => fireEvent.click(screen.getByRole('radio', { name }));
+  const toast = () => document.querySelector('.play-foot .edit-toast');
+  const spoken = () => document.querySelector('.play-foot [role="status"]')!.textContent;
+  const undo = () => screen.queryByRole('button', { name: /^Undo: / });
+
+  afterEach(() => vi.useRealTimers());
+
+  it('keeps the new score and offers it back: the row shows it, a screen reader hears it', () => {
+    const play = show(finished());
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    expect(play.latest().scores[1].p1).toBe(4);
+    expect(toast()?.textContent).toContain('Al, hole 1: 5 → 4');
+    expect(spoken()).toBe('Al, hole 1 changed from 5 to 4.');
+    expect(undo()?.getAttribute('aria-label')).toBe('Undo: put Al, hole 1 back to 5');
+    // In the foot, above the button it must never cover.
+    const foot = document.querySelector('.play-foot')!;
+    const back = screen.getByRole('button', { name: 'Back to results →' });
+    expect(foot.contains(toast())).toBe(true);
+    expect(toast()!.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('Undo puts that one cell back, says so, and drops its button for the row', () => {
+    const play = show(finished());
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[1].p1).toBe(5);
+    expect(toast()?.textContent).toBe('Al, hole 1 is back to 5.');
+    expect(spoken()).toBe('Al, hole 1 is back to 5.');
+    expect(undo()).toBeNull();
+    expect(document.activeElement).toBe(toast());
+  });
+
+  it('Undo restores the cell only, not the round as it was', () => {
+    const play = show(finished());
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    cell(/^Bo, hole 2/);
+    chip('3, Birdie');
+    // Only the latest edit is offered back; the first one stays.
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[2].p2).toBeNull();
+    expect(play.latest().scores[1].p1).toBe(4);
+    expect(toast()?.textContent).toBe('Bo, hole 2 is blank again.');
+  });
+
+  it('a cleared score reads as a dash, and comes back on Undo', () => {
+    const play = show(finished());
+    cell(/^Al, hole 1, 5/);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear score' }));
+    expect(play.latest().scores[1].p1).toBeNull();
+    expect(toast()?.textContent).toContain('Al, hole 1: 5 → –');
+    expect(spoken()).toBe('Al, hole 1 changed from 5 to no score.');
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[1].p1).toBe(5);
+  });
+
+  it('league: an X fixed to a 5, then undone, is an X again — the 9 and the pick-up both', () => {
+    const play = show(league());
+    cell(/^Al, hole 1, picked up/);
+    chip('5, Bogey');
+    expect(play.latest().scores[1].p1).toBe(5);
+    expect(play.latest().pickups).toBeUndefined();
+    expect(toast()?.textContent).toContain('Al, hole 1: X → 5');
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[1].p1).toBe(9);
+    expect(play.latest().pickups).toEqual({ 1: ['p1'] });
+    expect(toast()?.textContent).toBe('Al, hole 1 is back to X.');
+  });
+
+  it('league: the Card can set an X', () => {
+    const play = show(league());
+    cell(/^Bo, hole 1, 4/);
+    fireEvent.click(screen.getByRole('button', { name: /^More scores for Bo/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Picked up — X, forfeits the hole' }));
+    expect(play.latest().scores[1].p2).toBe(9);
+    expect(play.latest().pickups).toEqual({ 1: ['p1', 'p2'] });
+    expect(toast()?.textContent).toContain('Bo, hole 1: 4 → X');
+    expect(spoken()).toBe('Bo, hole 1 changed from 4 to picked up.');
+  });
+
+  it('a cell opened and closed with nothing changed says nothing and saves nothing', async () => {
+    const start = league();
+    const play = show(start);
+    cell(/^Al, hole 1, picked up/);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(document.querySelector('dialog')).toBeNull());
+    // Re-tapping the selected chip is "it was right" — no change either.
+    cell(/^Bo, hole 1, 4/);
+    chip('4, Par');
+    expect(play.latest()).toBe(start);
+    expect(toast()).toBeNull();
+    expect(spoken()).toBe('');
+  });
+
+  it('switching tabs clears the row', () => {
+    show(finished());
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    expect(toast()).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Card' }));
+    expect(toast()).toBeNull();
+  });
+
+  it('the row goes by itself: 8s for the edit, 4s for the "back to" line', () => {
+    vi.useFakeTimers();
+    show(finished());
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    act(() => vi.advanceTimersByTime(7900));
+    expect(toast()).not.toBeNull();
+    act(() => vi.advanceTimersByTime(100));
+    expect(toast()).toBeNull();
+
+    cell(/^Al, hole 1, 4/);
+    chip('6, Double');
+    fireEvent.click(undo()!);
+    act(() => vi.advanceTimersByTime(3900));
+    expect(toast()?.textContent).toBe('Al, hole 1 is back to 4.');
+    act(() => vi.advanceTimersByTime(100));
+    expect(toast()).toBeNull();
   });
 });
