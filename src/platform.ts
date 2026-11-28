@@ -99,10 +99,3 @@ export function storageRisk(env: PlatformEnv = platformEnv()): StorageRisk {
   }
   return 'browser';
 }
-
-/** How to add Trunk to the home screen here, or null where the browser offers its own button. */
-export function installSteps(env: PlatformEnv = platformEnv()): string | null {
-  if (isIOS(env)) return 'Tap Share, then Add to Home Screen.';
-  if (isWebKit(env)) return 'In Safari, choose File, then Add to Dock.';
-  return null;
-}

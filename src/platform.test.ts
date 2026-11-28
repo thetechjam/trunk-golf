@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
-  installSteps,
   isIOS,
   isWebKit,
   platformEnv,
@@ -116,22 +115,6 @@ describe('storageRisk', () => {
   });
 });
 
-describe('installSteps', () => {
-  it('gives the share-sheet steps on iOS', () => {
-    expect(installSteps(env(UA.iPhoneSafari, 5))).toBe('Tap Share, then Add to Home Screen.');
-    expect(installSteps(env(UA.macSafari, 5))).toBe('Tap Share, then Add to Home Screen.');
-  });
-
-  it('gives the Dock steps in Safari on a Mac', () => {
-    expect(installSteps(env(UA.macSafari))).toBe('In Safari, choose File, then Add to Dock.');
-  });
-
-  it('is null where the browser offers its own install button', () => {
-    expect(installSteps(env(UA.androidChrome, 5))).toBeNull();
-    expect(installSteps(env(UA.macChrome))).toBeNull();
-  });
-});
-
 describe('platformEnv', () => {
   it('reads nothing, rather than throwing, where there is no navigator', () => {
     vi.stubGlobal('navigator', undefined);
@@ -146,6 +129,5 @@ describe('the default DOM test environment', () => {
   it('reads as a plain browser tab', () => {
     expect(isWebKit()).toBe(false);
     expect(storageRisk()).toBe('browser');
-    expect(installSteps()).toBeNull();
   });
 });
