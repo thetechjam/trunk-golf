@@ -16,9 +16,22 @@ export const roundTitle = (r: Round): string => {
   // The players are teams, and "Jesse & Sam v Al & Bo" says less than the
   // format does.
   if (isScramble(r)) return 'Scramble';
-  const names = r.players.map((p) => p.name.split(' ')[0]);
-  return names.length <= 2 ? names.join(' v ') : `${names[0]} +${names.length - 1}`;
+  return crewNames(r.players.map((p) => p.name), ' v ');
 };
+
+/**
+ * A group as people say it: first names, "Mike & Dave", "Mike, Dave, Chris &
+ * Tom", and past four "Mike, Dave & 3 more" — "Mike +3" read as a score.
+ * `pair` joins exactly two names; a round's title passes " v " so a head to
+ * head still reads as one.
+ */
+export function crewNames(names: string[], pair = ' & '): string {
+  const first = names.map((n) => n.trim().split(/\s+/)[0]).filter(Boolean);
+  if (first.length <= 1) return first.join('');
+  if (first.length === 2) return first.join(pair);
+  if (first.length <= 4) return `${first.slice(0, -1).join(', ')} & ${first[first.length - 1]}`;
+  return `${first[0]}, ${first[1]} & ${first.length - 2} more`;
+}
 
 /**
  * How recently a round must have been touched to be offered as the one to
