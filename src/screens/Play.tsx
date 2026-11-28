@@ -44,13 +44,25 @@ interface CardEdit {
   playerId: string;
   before: CellState;
   after: CellState;
+  /** When it was made (Date.now()), for the double-tap guard. */
+  at: number;
   /** Undone already: the row says so, with no button. */
   undone?: boolean;
 }
 
-/** How long the Undo row stays, and the "back to" line after it. */
-const EDIT_TOAST_MS = 8000;
+/**
+ * The Undo row itself does not time out: it stays until the next edit, a tab
+ * switch or a move to another hole, so a keyboard or screen-reader user has
+ * time to reach it. Only the "back to" line after an Undo goes by itself.
+ */
 const UNDONE_TOAST_MS = 4000;
+/**
+ * The sheet closes on the first tap and the Undo row appears in the same
+ * frame, roughly where the chips and Clear were. The second tap of a
+ * double-tap (a habit the Hole tab's re-tap-to-clear teaches) must not land on
+ * Undo or on the foot's button, so for this long after an edit both ignore it.
+ */
+const EDIT_GUARD_MS = 400;
 
 interface Props {
   round: Round;
@@ -78,16 +90,23 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
   const [handingOver, setHandingOver] = useState(false);
   const [cardEdit, setCardEdit] = useState<CardEdit | null>(null);
   const toastRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
 
-  // The Undo row goes by itself: a slip is noticed at once or not at all.
+  // The "back to" line goes by itself. It holds focus after Undo, so hand
+  // focus to the title first rather than let it fall to the page.
   useEffect(() => {
-    if (!cardEdit) return;
-    const t = setTimeout(
-      () => setCardEdit(null),
-      cardEdit.undone ? UNDONE_TOAST_MS : EDIT_TOAST_MS
-    );
+    if (!cardEdit?.undone) return;
+    const t = setTimeout(() => {
+      if (toastRef.current?.contains(document.activeElement))
+        titleRef.current?.focus({ preventScroll: true });
+      setCardEdit(null);
+    }, UNDONE_TOAST_MS);
     return () => clearTimeout(t);
   }, [cardEdit]);
+
+  /** A Card edit landed a moment ago, so this tap is likely a double-tap's second. */
+  const justEdited = () =>
+    cardEdit != null && !cardEdit.undone && Date.now() - cardEdit.at < EDIT_GUARD_MS;
 
   // Keep screen awake is set in the sheet now, so re-read it on close: the lock
   // itself lives here, for as long as Play is mounted, and has to follow.
@@ -178,12 +197,12 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
     if (sameCell(before, after)) return;
     setWarn(null);
     onChange(next);
-    setCardEdit({ holeNumber, playerId, before, after });
+    setCardEdit({ holeNumber, playerId, before, after, at: Date.now() });
   };
 
   /** Put back that one cell, on the round as it is now. */
   const undoCardEdit = () => {
-    if (!cardEdit) return;
+    if (!cardEdit || justEdited()) return;
     onChange(restoreCell(round, cardEdit.holeNumber, cardEdit.playerId, cardEdit.before));
     setCardEdit({ ...cardEdit, undone: true });
     // The button just pressed goes away; keep focus where the news is.
@@ -386,7 +405,7 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
         <button className="btn-ghost icon back" onClick={onExit} aria-label="Back to rounds">
           ‹
         </button>
-        <h1 tabIndex={-1}>{round.course || 'Round'}</h1>
+        <h1 ref={titleRef} tabIndex={-1}>{round.course || 'Round'}</h1>
         <button className="btn-ghost" onClick={tryFinish}>
           Finish
         </button>
@@ -550,15 +569,15 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
           // Reopened from Results to fix a score: it is not being finished
           // again, and "Finish Round" on a finished round asked a question
           // that had been answered.
-          <button className="btn-primary big" onClick={onFinish}>
+          <button className="btn-primary big" onClick={() => justEdited() || onFinish()}>
             Back to results →
           </button>
         ) : last ? (
-          <button className="btn-primary big" onClick={tryFinish}>
+          <button className="btn-primary big" onClick={() => justEdited() || tryFinish()}>
             Finish Round →
           </button>
         ) : (
-          <button className="btn-primary big" onClick={tryNext}>
+          <button className="btn-primary big" onClick={() => justEdited() || tryNext()}>
             Next Hole →
           </button>
         )}

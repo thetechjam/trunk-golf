@@ -59,14 +59,18 @@ export const editText = (
   after: CellState
 ): string => `${name}, hole ${holeNumber}: ${cellLabel(before)} → ${cellLabel(after)}`;
 
-/** "Mike, hole 5 changed from 5 to 4." — the arrow and dash read badly aloud. */
+/**
+ * "Mike, hole 5 changed from 5 to 4. Undo is available." — the arrow and dash
+ * read badly aloud, and focus goes back to the cell, so say the Undo is there.
+ */
 export const editSpoken = (
   name: string,
   holeNumber: number,
   before: CellState,
   after: CellState
 ): string =>
-  `${name}, hole ${holeNumber} changed from ${cellSpoken(before)} to ${cellSpoken(after)}.`;
+  `${name}, hole ${holeNumber} changed from ${cellSpoken(before)} to ${cellSpoken(after)}. ` +
+  'Undo is available.';
 
 /** "Mike, hole 5 is back to 5." / "… is back to X." / "… is blank again." */
 export const undoneText = (name: string, holeNumber: number, before: CellState): string =>
@@ -74,8 +78,8 @@ export const undoneText = (name: string, holeNumber: number, before: CellState):
     ? `${name}, hole ${holeNumber} is back to ${cellLabel(before)}.`
     : `${name}, hole ${holeNumber} is blank again.`;
 
-/** The Undo button's name: "Undo: put Mike, hole 5 back to 5". */
+/** The Undo button's name: "Undo: put Mike, hole 5 back to 5" / "Undo: clear Mike, hole 5". */
 export const undoLabel = (name: string, holeNumber: number, before: CellState): string =>
-  `Undo: put ${name}, hole ${holeNumber} back to ${
-    before.x ? 'X' : before.score == null ? 'blank' : before.score
-  }`;
+  !before.x && before.score == null
+    ? `Undo: clear ${name}, hole ${holeNumber}`
+    : `Undo: put ${name}, hole ${holeNumber} back to ${cellLabel(before)}`;

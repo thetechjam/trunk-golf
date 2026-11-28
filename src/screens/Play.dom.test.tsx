@@ -247,6 +247,9 @@ describe('fixing a score on the Card', () => {
   const toast = () => document.querySelector('.play-foot .edit-toast');
   const spoken = () => document.querySelector('.play-foot [role="status"]')!.textContent;
   const undo = () => screen.queryByRole('button', { name: /^Undo: / });
+  // Undo and the foot's button ignore a tap for 400ms after an edit (a
+  // double-tap guard), so tests that press them let that pass first.
+  const pause = () => act(() => vi.advanceTimersByTime(400));
 
   afterEach(() => vi.useRealTimers());
 
@@ -256,7 +259,7 @@ describe('fixing a score on the Card', () => {
     chip('4, Par');
     expect(play.latest().scores[1].p1).toBe(4);
     expect(toast()?.textContent).toContain('Al, hole 1: 5 → 4');
-    expect(spoken()).toBe('Al, hole 1 changed from 5 to 4.');
+    expect(spoken()).toBe('Al, hole 1 changed from 5 to 4. Undo is available.');
     expect(undo()?.getAttribute('aria-label')).toBe('Undo: put Al, hole 1 back to 5');
     // In the foot, above the button it must never cover.
     const foot = document.querySelector('.play-foot')!;
@@ -266,9 +269,11 @@ describe('fixing a score on the Card', () => {
   });
 
   it('Undo puts that one cell back, says so, and drops its button for the row', () => {
+    vi.useFakeTimers();
     const play = show(finished());
     cell(/^Al, hole 1, 5/);
     chip('4, Par');
+    pause();
     fireEvent.click(undo()!);
     expect(play.latest().scores[1].p1).toBe(5);
     expect(toast()?.textContent).toBe('Al, hole 1 is back to 5.');
@@ -278,11 +283,13 @@ describe('fixing a score on the Card', () => {
   });
 
   it('Undo restores the cell only, not the round as it was', () => {
+    vi.useFakeTimers();
     const play = show(finished());
     cell(/^Al, hole 1, 5/);
     chip('4, Par');
     cell(/^Bo, hole 2/);
     chip('3, Birdie');
+    pause();
     // Only the latest edit is offered back; the first one stays.
     fireEvent.click(undo()!);
     expect(play.latest().scores[2].p2).toBeNull();
@@ -291,23 +298,27 @@ describe('fixing a score on the Card', () => {
   });
 
   it('a cleared score reads as a dash, and comes back on Undo', () => {
+    vi.useFakeTimers();
     const play = show(finished());
     cell(/^Al, hole 1, 5/);
     fireEvent.click(screen.getByRole('button', { name: 'Clear score' }));
     expect(play.latest().scores[1].p1).toBeNull();
     expect(toast()?.textContent).toContain('Al, hole 1: 5 → –');
-    expect(spoken()).toBe('Al, hole 1 changed from 5 to no score.');
+    expect(spoken()).toBe('Al, hole 1 changed from 5 to no score. Undo is available.');
+    pause();
     fireEvent.click(undo()!);
     expect(play.latest().scores[1].p1).toBe(5);
   });
 
   it('league: an X fixed to a 5, then undone, is an X again — the 9 and the pick-up both', () => {
+    vi.useFakeTimers();
     const play = show(league());
     cell(/^Al, hole 1, picked up/);
     chip('5, Bogey');
     expect(play.latest().scores[1].p1).toBe(5);
     expect(play.latest().pickups).toBeUndefined();
     expect(toast()?.textContent).toContain('Al, hole 1: X → 5');
+    pause();
     fireEvent.click(undo()!);
     expect(play.latest().scores[1].p1).toBe(9);
     expect(play.latest().pickups).toEqual({ 1: ['p1'] });
@@ -322,7 +333,7 @@ describe('fixing a score on the Card', () => {
     expect(play.latest().scores[1].p2).toBe(9);
     expect(play.latest().pickups).toEqual({ 1: ['p1', 'p2'] });
     expect(toast()?.textContent).toContain('Bo, hole 1: 4 → X');
-    expect(spoken()).toBe('Bo, hole 1 changed from 4 to picked up.');
+    expect(spoken()).toBe('Bo, hole 1 changed from 4 to picked up. Undo is available.');
   });
 
   it('a cell opened and closed with nothing changed says nothing and saves nothing', async () => {
@@ -349,22 +360,88 @@ describe('fixing a score on the Card', () => {
     expect(toast()).toBeNull();
   });
 
-  it('the row goes by itself: 8s for the edit, 4s for the "back to" line', () => {
+  it('moving to another hole clears the row', () => {
+    vi.useFakeTimers();
+    // In play: Play opens on hole 2, the first with no scores, so Next Hole
+    // asks first and "Skip anyway" is the move (both go through go()).
+    show(
+      makeRound({
+        players: four,
+        holes: nine,
+        scores: { 1: { p1: 5, p2: 4, p3: 3, p4: 6 } },
+      })
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Card' }));
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    expect(toast()).not.toBeNull();
+    pause();
+    fireEvent.click(screen.getByRole('button', { name: 'Next Hole →' }));
+    expect(toast()).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Skip anyway' }));
+    // go() moves on, onto the Hole tab, and the row is gone.
+    expect(screen.getByRole('button', { name: 'Hole' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(toast()).toBeNull();
+    expect(spoken()).toBe('');
+    // Back on the Card, the old edit is not offered again.
+    fireEvent.click(screen.getByRole('button', { name: 'Card' }));
+    expect(toast()).toBeNull();
+    expect(undo()).toBeNull();
+  });
+
+  it('the Undo row waits for the user; only the "back to" line goes by itself', () => {
     vi.useFakeTimers();
     show(finished());
     cell(/^Al, hole 1, 5/);
     chip('4, Par');
-    act(() => vi.advanceTimersByTime(7900));
-    expect(toast()).not.toBeNull();
-    act(() => vi.advanceTimersByTime(100));
-    expect(toast()).toBeNull();
+    // Long enough for a screen reader or a keyboard to get there.
+    act(() => vi.advanceTimersByTime(60_000));
+    expect(undo()).not.toBeNull();
 
-    cell(/^Al, hole 1, 4/);
-    chip('6, Double');
     fireEvent.click(undo()!);
     act(() => vi.advanceTimersByTime(3900));
-    expect(toast()?.textContent).toBe('Al, hole 1 is back to 4.');
+    expect(toast()?.textContent).toBe('Al, hole 1 is back to 5.');
+    expect(document.activeElement).toBe(toast());
     act(() => vi.advanceTimersByTime(100));
     expect(toast()).toBeNull();
+    // Focus was on the row that just went: it moves to the title, not the page.
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+  });
+
+  it('a double-tap cannot undo the edit: Undo ignores a tap in the first 400ms', () => {
+    vi.useFakeTimers();
+    const play = show(finished());
+    cell(/^Al, hole 1, 5/);
+    chip('4, Par');
+    // The second tap lands on Undo, which mounted where the chips were.
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[1].p1).toBe(4);
+    expect(undo()).not.toBeNull();
+    act(() => vi.advanceTimersByTime(399));
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[1].p1).toBe(4);
+    act(() => vi.advanceTimersByTime(1));
+    fireEvent.click(undo()!);
+    expect(play.latest().scores[1].p1).toBe(5);
+  });
+
+  it('a double-tap on Clear cannot leave the Card: the foot button waits 400ms too', () => {
+    vi.useFakeTimers();
+    const play = show(finished());
+    cell(/^Al, hole 1, 5/);
+    fireEvent.click(screen.getByRole('button', { name: 'Clear score' }));
+    const back = screen.getByRole('button', { name: 'Back to results →' });
+    fireEvent.click(back);
+    expect(play.finished()).toBe(0);
+    pause();
+    fireEvent.click(back);
+    expect(play.finished()).toBe(1);
+  });
+
+  it('a double-tap guard does not hold up an untouched Card', () => {
+    const play = show(finished());
+    fireEvent.click(screen.getByRole('button', { name: 'Back to results →' }));
+    expect(play.finished()).toBe(1);
   });
 });

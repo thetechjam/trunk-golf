@@ -94,11 +94,15 @@ describe('the toast copy', () => {
   });
 
   it('says the change in words', () => {
-    expect(editSpoken('Mike', 5, num(5), num(4))).toBe('Mike, hole 5 changed from 5 to 4.');
-    expect(editSpoken('Mike', 5, blank, num(4))).toBe(
-      'Mike, hole 5 changed from no score to 4.'
+    expect(editSpoken('Mike', 5, num(5), num(4))).toBe(
+      'Mike, hole 5 changed from 5 to 4. Undo is available.'
     );
-    expect(editSpoken('Mike', 5, num(6), X)).toBe('Mike, hole 5 changed from 6 to picked up.');
+    expect(editSpoken('Mike', 5, blank, num(4))).toBe(
+      'Mike, hole 5 changed from no score to 4. Undo is available.'
+    );
+    expect(editSpoken('Mike', 5, num(6), X)).toBe(
+      'Mike, hole 5 changed from 6 to picked up. Undo is available.'
+    );
   });
 
   it('confirms the undo', () => {
@@ -110,6 +114,6 @@ describe('the toast copy', () => {
   it('names the Undo button', () => {
     expect(undoLabel('Mike', 5, num(5))).toBe('Undo: put Mike, hole 5 back to 5');
     expect(undoLabel('Mike', 5, X)).toBe('Undo: put Mike, hole 5 back to X');
-    expect(undoLabel('Mike', 5, blank)).toBe('Undo: put Mike, hole 5 back to blank');
+    expect(undoLabel('Mike', 5, blank)).toBe('Undo: clear Mike, hole 5');
   });
 });
