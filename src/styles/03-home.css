@@ -479,6 +479,18 @@
   letter-spacing: inherit;
   color: inherit;
 }
+/* Mid-round the toggle is the control's only text, so it reads one step up
+   from the eyebrow size the plain title uses. */
+.home-more.folded .home-more-toggle {
+  font-size: var(--fs-sm);
+}
+/* .home-more clips to its rounded corners (overflow: hidden), which would cut
+   off the usual 2px-outside ring, and mid-round the toggle fills the card.
+   Draw the ring inside the control instead. WCAG 2.4.7. */
+.home-more-row:focus-visible,
+.home-more-toggle:focus-visible {
+  outline-offset: -2px;
+}
 /* Rotates like .setup-row-chevron, with its token and curve. */
 .home-more-toggle-chev {
   font-size: var(--fs-2xl);
