@@ -475,8 +475,9 @@
   text-wrap: balance;
 }
 /* "2-on-2" is one term: kept whole so a narrow tile never breaks it at a
-   hyphen ("A weekly 2-" / "on-2 night"). At 320-390px each line still fits:
-   "A weekly" / "2-on-2 night" and "Everyone hits," / "best ball". */
+   hyphen ("A weekly 2-" / "on-2 night"). Measured: at 360px and 390px both
+   sub-lines sit on one line; at 320px both wrap to two lines, League as
+   "A weekly" / "2-on-2 night". */
 .home-action-keep {
   white-space: nowrap;
 }
