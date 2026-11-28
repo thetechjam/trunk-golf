@@ -478,8 +478,10 @@
   line-height: 1.25;
   text-wrap: balance;
 }
-/* Beside Start New Round (no Scramble), the tile is sized by its content;
-   held narrow so the descriptor wraps rather than squeezing the primary. */
+/* Beside Start New Round (no Scramble), the tile is sized by its content,
+   and a descriptor there would widen it enough to squeeze the primary at
+   320px. So it is the word alone; the description stays on the button for
+   screen readers (aria-describedby reads hidden text). */
 .home-actions:not(.three) .home-action-sub {
-  max-width: 8rem;
+  display: none;
 }
