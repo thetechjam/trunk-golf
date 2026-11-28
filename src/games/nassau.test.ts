@@ -72,6 +72,32 @@ describe('computeNassau', () => {
     expect(r.status).toBe('All bets open');
   });
 
+  it('reports no bets won on a finished round where every bet was halved', () => {
+    const hs = holes18();
+    const scores = scoresFrom(hs, { p1: Array(18).fill(4), p2: Array(18).fill(4) });
+    const r = computeNassau(
+      makeRound({ holes: hs, games: ['nassau'], scores, status: 'finished' }),
+    );
+    expect(r.status).toBe('No bets won');
+  });
+
+  it('reports no bets won on a finished round with no scores', () => {
+    const r = computeNassau(
+      makeRound({ holes: holes18(), games: ['nassau'], status: 'finished' }),
+    );
+    expect(r.status).toBe('No bets won');
+  });
+
+  it('still reports the lead on a finished round with a bet won', () => {
+    const hs = holes18();
+    const scores = scoresFrom(hs, { p1: Array(18).fill(3), p2: Array(18).fill(5) });
+    const r = computeNassau(
+      makeRound({ holes: hs, games: ['nassau'], scores, status: 'finished' }),
+    );
+    expect(r.status).toContain('3–0');
+    expect(r.status).not.toBe('No bets won');
+  });
+
   it('defaults sides to the two players and shows the matchup note', () => {
     const r = computeNassau(makeRound({ holes: holes18(), games: ['nassau'] }));
     const { a, b } = nassauTeams(makeRound({ holes: holes18() }));
