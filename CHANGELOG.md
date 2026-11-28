@@ -149,7 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   full rules. The last card's "Start a round" goes straight to New Round.
 - **Start a trip from Home.** Under Start New Round, "Or start something
   else" lists Trip ("Several rounds this weekend. Keep score each day, settle
-  the money once at the end."), Scramble ("Everyone hits, best ball") and
+  the money once at the end."), Scramble ("Everyone hits, best shot") and
   League ("A weekly 2-on-2 night"). Trip opens New Round with the trip's name
   ready to type; if a trip is already going, it opens on that trip. Scramble
   and League open the screens they always did.

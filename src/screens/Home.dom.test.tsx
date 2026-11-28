@@ -93,7 +93,7 @@ describe('Home: Or start something else', () => {
     const scramble = screen.getByRole('button', { name: 'Scramble' });
     expect(describedBy(trip)).toBe(TRIP_SUB);
     expect(describedBy(league)).toBe('A weekly 2-on-2 night');
-    expect(describedBy(scramble)).toBe('Everyone hits, best ball');
+    expect(describedBy(scramble)).toBe('Everyone hits, best shot');
     // The visible word is still inside each name, for voice control.
     expect(trip.textContent).toContain('Trip');
     expect(league.textContent).toContain('League');

@@ -298,7 +298,7 @@ function StartSomethingElse({ live, onNewTrip, onNewScramble, onNewLeague }: Mor
               label="Scramble"
               icon={<ScrambleIcon size={20} />}
               name="Scramble"
-              sub="Everyone hits, best ball"
+              sub="Everyone hits, best shot"
               onClick={onNewScramble}
             />
           )}
