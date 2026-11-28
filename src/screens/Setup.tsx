@@ -24,6 +24,7 @@ import { useCourse } from './setup/useCourse';
 import { PlayersSection } from './setup/PlayersSection';
 import { CourseSection, HolesSection } from './setup/CourseSection';
 import { GamesSection, type SidePick } from './setup/GamesSection';
+import { CourseNudge } from './setup/CourseNudge';
 
 /** A side pick whose mode has not been chosen yet, and so follows the players. */
 type PendingPick = Omit<SidePick, 'mode'> & { mode?: SidePick['mode'] };
@@ -236,6 +237,31 @@ export function Setup({ onCancel, onStart }: Props) {
   // per-game picker stays out of the way until the choice means something.
   // An Index counts: on a rated course it is what their strokes come from.
   const anyHandicap = namedPlayers.some((p) => (p.handicap ?? 0) !== 0 || p.index != null);
+  // Strokes that land on particular holes, and no hole has a stroke index to
+  // say which: they fall in hole order (games/handicap.ts strokeIndexMap). A
+  // net stroke-play total is the same whichever holes they fall on, so it
+  // alone does not count. A partial or broken set has its own note.
+  const strokesPerHole =
+    games.some(
+      (g) =>
+        g !== 'strokePlay' &&
+        usesHandicap(g) &&
+        (!canScoreNet(g) || netByGame[g] !== false)
+    ) &&
+    namedPlayers.some((p) => (p.handicap ?? 0) !== 0 || (rated && p.index != null));
+  // Indexes still exactly in hole order count as not set: opening the
+  // stroke-index editor seeds 1..N, which places the strokes no differently
+  // from having none, so the note stays until an index is actually changed.
+  const showCourseNudge =
+    strokesPerHole &&
+    cs.holes.every((h, i) => typeof h.strokeIndex !== 'number' || h.strokeIndex === i + 1);
+  const fixCourse = () => {
+    if (!cs.course.trim()) return openRow('course');
+    openRow('holes');
+    // Opens the stroke-index editor. Turning it on seeds blanks in hole
+    // order, which the check above still treats as not set.
+    if (!cs.advancedHoles) dispatch({ type: 'toggleAdvanced' });
+  };
   const allowanceGames = games.filter(usesHandicap);
   const showScoring = anyHandicap && allowanceGames.length > 0;
   const canTeams = namedPlayers.length >= 4;
@@ -415,6 +441,8 @@ export function Setup({ onCancel, onStart }: Props) {
         onRemove={removePlayer}
         indexWaiting={indexWaiting && !openRows.holes}
       />
+
+      {showCourseNudge && <CourseNudge named={!!cs.course.trim()} onSet={fixCourse} />}
 
       <div className="setup-rows">
         <SetupRow

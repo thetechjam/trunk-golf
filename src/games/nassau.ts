@@ -174,7 +174,9 @@ export function computeNassau(round: Round): GameResult {
   });
 
   let status: string;
-  if (aWins === 0 && bWins === 0) status = 'All bets open';
+  if (aWins === 0 && bWins === 0)
+    // "All bets open" on a finished card reads as if the round never ended.
+    status = round.status === 'finished' ? 'No bets won' : 'All bets open';
   else if (aWins > bWins) status = `${a.label} ${leadVerb(a)} ${aWins}–${bWins}`;
   else if (bWins > aWins) status = `${b.label} ${leadVerb(b)} ${bWins}–${aWins}`;
   else status = `Tied ${aWins}–${bWins}`;

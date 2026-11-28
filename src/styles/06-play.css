@@ -725,6 +725,11 @@
   border-color: var(--line);
   cursor: default;
 }
+.press-note {
+  margin: 8px 0 0;
+  font-size: var(--fs-sm);
+  color: var(--muted);
+}
 .press-list {
   display: flex;
   flex-wrap: wrap;

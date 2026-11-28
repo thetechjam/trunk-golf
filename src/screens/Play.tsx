@@ -406,9 +406,17 @@ export function Play({ round, onChange, onFinish, onExit }: Props) {
           ‹
         </button>
         <h1 ref={titleRef} tabIndex={-1}>{round.course || 'Round'}</h1>
-        <button className="btn-ghost" onClick={tryFinish}>
-          Finish
-        </button>
+        {/* A finished round goes straight back to its results, as the foot's
+            "Back to results" does: "Finish" here asked to finish it again. */}
+        {round.status === 'finished' ? (
+          <button className="btn-ghost" onClick={onFinish}>
+            Results
+          </button>
+        ) : (
+          <button className="btn-ghost" onClick={tryFinish}>
+            Finish
+          </button>
+        )}
       </header>
 
       <div className="seg view-toggle">

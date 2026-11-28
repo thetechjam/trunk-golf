@@ -136,9 +136,11 @@ export function PlayerScoreRow({
           >
             {pickedUp ? 'X' : (value ?? '–')}
           </span>
-          <span className="score-tag">
-            {pickedUp ? 'picked up' : value == null ? 'tap' : scoreLabel(toPar)}
-          </span>
+          {/* No tag on an unscored player: the dash says it, and a "TAP"
+              here was read as a word to decode, not an instruction. */}
+          {(pickedUp || value != null) && (
+            <span className="score-tag">{pickedUp ? 'picked up' : scoreLabel(toPar)}</span>
+          )}
         </span>
       </div>
       <ScoreChips

@@ -157,7 +157,8 @@ describe('App navigation', () => {
     expect(history.state).toMatchObject({ view: 'results', depth: 1 });
 
     await user.click(screen.getByRole('button', { name: 'Back to the scorecard' }));
-    expect(await screen.findByRole('button', { name: 'Finish' })).toBeTruthy();
+    // A finished round's header button reads "Results", not "Finish".
+    expect(await screen.findByRole('button', { name: 'Results' })).toBeTruthy();
     expect(history.state).toMatchObject({ view: 'play', depth: 1 });
 
     const pops = await countingPops(async () => {
@@ -188,7 +189,7 @@ describe('App navigation', () => {
     await user.click(screen.getByText('Test Links'));
     await screen.findByRole('heading', { name: 'Results' });
     await user.click(screen.getByRole('button', { name: 'Back to the scorecard' }));
-    await screen.findByRole('button', { name: 'Finish' });
+    await screen.findByRole('button', { name: 'Results' });
     await user.click(screen.getByRole('button', { name: 'Back to rounds' }));
     await waitFor(() => expect(onHome()).toBe(true));
 

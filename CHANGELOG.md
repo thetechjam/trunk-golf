@@ -143,6 +143,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **trunkgolf.com redirects to trunk.golf.** `netlify.toml` sends
   `trunkgolf.com` and `www.trunkgolf.com`, over http or https, to the same
   path on `https://trunk.golf` with a permanent (301) redirect.
+- **How Trunk works.** "New here? See how it works" on an empty Home now opens
+  three short cards — add the group, tap the scores, settle up — moved by Back
+  and Next or a sideways swipe, with the 80-second video and a link to the
+  full rules. The last card's "Start a round" goes straight to New Round.
+- **One-line descriptions under League and Scramble on Home**: "A weekly 2-on-2
+  night" and "Everyone hits, best shot". The buttons keep their names.
+- **A note on New Round when handicaps are in play and the course has no
+  stroke indexes**: the strokes would fall in hole order, and tapping the
+  note opens the course, or Holes & pars, to set them.
 
 ### Changed
 - **Stakes go on the game tiles in New Round.** A picked game's tile shows
@@ -215,6 +224,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Stableford point and Quota target in the round. A round link's date has to
   be the `yyyy-mm-dd` every `Round.date` is written as, since History shelves
   rounds by the year and month in it.
+- **The Hole tab says less and explains more.** The "TAP" tag beside a player
+  with no score is gone; the press panel says what a press is until the
+  group's first one; a finished Nassau with no bet won reads "No bets won"
+  rather than "All bets open" (in the share text and image too); and on a
+  finished round the header button on the Play screen says "Results", not
+  "Finish".
 
 ### Fixed
 - **A phone turned sideways lays out the Hole tab's strips properly.** The

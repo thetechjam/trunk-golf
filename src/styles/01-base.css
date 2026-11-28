@@ -10,6 +10,7 @@
 
 :root {
   --font-display: 'Oswald', 'Avenir Next Condensed', 'Arial Narrow', sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
   --green-900: #0b3d2e;
   --green-700: #14694e;
   --green-600: #1a7d5e;
@@ -265,7 +266,7 @@ html.sheet-open {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--bg);
   background-image: var(--topo);
   background-size: 420px 420px;
